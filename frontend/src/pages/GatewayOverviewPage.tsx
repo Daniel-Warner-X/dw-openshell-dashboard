@@ -17,6 +17,7 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
+  Divider,
   Dropdown,
   DropdownItem,
   DropdownList,
@@ -653,6 +654,16 @@ const GatewayOverviewPage: React.FC = () => {
                 >
                   <CardTitle component="h2">Needs attention</CardTitle>
                 </CardHeader>
+                {/* The heading in a box and a rule closing the list, the
+                    way the two cards beside this one are built. There the
+                    rules come from the list itself; a sentence under each
+                    line is not a row of a list, so here they are the
+                    card's own dividers and the lines between are left
+                    clear. Both run the card's full width, being children
+                    of the card rather than of its body, and the last is
+                    held a card's bottom padding clear of the 16px corner
+                    radius that would otherwise clip its ends. */}
+                <Divider />
                 <CardBody>
                   <DescriptionList isCompact>
                     {shownAttention.map((item) => (
@@ -673,12 +684,14 @@ const GatewayOverviewPage: React.FC = () => {
                     ))}
                   </DescriptionList>
                 </CardBody>
+                <Divider className="pf-v6-u-mb-lg" />
               </Card>
             ) : (
-              // The same card with the same heading, so that the column does
+              // The same card, built the same way, so that the column does
               // not change shape when the last thing waiting is dealt with.
               <Card data-testid="gateway-all-clear">
                 <CardTitle component="h2">Needs attention</CardTitle>
+                <Divider />
                 <CardBody>
                   <Flex
                     alignItems={{ default: 'alignItemsCenter' }}
@@ -694,6 +707,7 @@ const GatewayOverviewPage: React.FC = () => {
                     </FlexItem>
                   </Flex>
                 </CardBody>
+                <Divider className="pf-v6-u-mb-lg" />
               </Card>
             )}
           </GridItem>
