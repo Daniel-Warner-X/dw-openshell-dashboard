@@ -95,16 +95,23 @@ const GatewayStatusIndicator: React.FC = () => {
   const state = gatewayHealthStateOf(useGatewayCompatibility());
 
   return (
-    <span role="status" data-testid="gateway-status-region">
+    // The status region is the row itself. A full-height toolbar stretches
+    // its items and their children, so a plain wrapper around the row would
+    // be masthead-tall with the row sitting at its top — the label and the
+    // badge riding above the centreline every other item on the bar keeps.
+    // Centred here, there is nothing left to ride high in.
+    <Flex
+      component="span"
+      role="status"
+      gap={{ default: 'gapSm' }}
+      alignItems={{ default: 'alignItemsCenter' }}
+      flexWrap={{ default: 'nowrap' }}
+      data-testid="gateway-status-region"
+    >
       {state && (
         // What the label is the value of, said once beside it rather than
         // repeated inside every one of the four states.
-        <Flex
-          component="span"
-          gap={{ default: 'gapSm' }}
-          alignItems={{ default: 'alignItemsCenter' }}
-          flexWrap={{ default: 'nowrap' }}
-        >
+        <>
           <FlexItem component="span">
             <Content component="small">{t('gatewayHealth.label')}</Content>
           </FlexItem>
@@ -118,9 +125,9 @@ const GatewayStatusIndicator: React.FC = () => {
               {t(STATE_LABEL_KEY[state])}
             </Label>
           </FlexItem>
-        </Flex>
+        </>
       )}
-    </span>
+    </Flex>
   );
 };
 
