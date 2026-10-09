@@ -432,7 +432,7 @@ const GatewayOverviewPage: React.FC = () => {
             tiles.length > 0 && (
               <GridItem span={12}>
                 <Card data-testid="gateway-counts">
-                  <CardTitle>On this gateway</CardTitle>
+                  <CardTitle>Inventory</CardTitle>
                   <CardBody>
                     {/* Equal columns at every count, rather than a fixed tile
                         width that leaves the last one stranded on a row of
