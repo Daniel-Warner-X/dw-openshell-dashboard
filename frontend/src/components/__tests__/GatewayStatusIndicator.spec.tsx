@@ -106,16 +106,16 @@ describe('GatewayStatusIndicator', () => {
   });
 
   it.each([
-    [{ data: answer(true) }, 'healthy', 'Healthy', 'pf-m-green'],
-    [{ data: answer(false) }, 'notHealthy', 'Not healthy', 'pf-m-orange'],
+    [{ data: answer(true) }, 'healthy', 'HEALTHY', 'pf-m-green'],
+    [{ data: answer(false) }, 'notHealthy', 'NOT HEALTHY', 'pf-m-orange'],
     [
       { isError: true, error: unreachable },
       'unreachable',
-      'Unreachable',
+      'UNREACHABLE',
       'pf-m-red',
     ],
     // Not a state of the gateway, so it has none of the state colours.
-    [{ data: answer() }, 'unknown', 'Unknown', undefined],
+    [{ data: answer() }, 'unknown', 'UNKNOWN', undefined],
   ])('shows %# in words and in colour', (query, state, label, className) => {
     serve(query);
     render(<GatewayStatusIndicator />);
@@ -136,8 +136,8 @@ describe('GatewayStatusIndicator', () => {
     serve({ isError: true, error: unreachable, data: answer(true) });
     render(<GatewayStatusIndicator />);
 
-    expect(indicator()).toHaveTextContent('Unreachable');
-    expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
+    expect(indicator()).toHaveTextContent('UNREACHABLE');
+    expect(screen.queryByText('HEALTHY')).not.toBeInTheDocument();
   });
 
   it('shows nothing until there is an answer', () => {
@@ -160,15 +160,15 @@ describe('GatewayStatusIndicator', () => {
     serve({ data: answer(true) });
     rerender(<GatewayStatusIndicator />);
     expect(screen.getByRole('status')).toBe(region);
-    expect(region).toHaveTextContent(/Gateway status:\s*Healthy/);
+    expect(region).toHaveTextContent(/Gateway status:\s*HEALTHY/);
 
     serve({ isError: true, error: unreachable, data: answer(true) });
     rerender(<GatewayStatusIndicator />);
     expect(screen.getByRole('status')).toBe(region);
-    expect(region).toHaveTextContent(/Gateway status:\s*Unreachable/);
+    expect(region).toHaveTextContent(/Gateway status:\s*UNREACHABLE/);
 
     serve({ data: answer(true) });
     rerender(<GatewayStatusIndicator />);
-    expect(region).toHaveTextContent(/Gateway status:\s*Healthy/);
+    expect(region).toHaveTextContent(/Gateway status:\s*HEALTHY/);
   });
 });
