@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   Badge,
   Button,
@@ -16,6 +16,7 @@ import {
   Nav,
   NavGroup,
   NavItem,
+  NavItemSeparator,
   NavList,
   Page,
   PageSection,
@@ -294,9 +295,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             {visibleEntries.filter((entry) => !entry.group).map(navItem)}
             {groupedEntries.map((group) =>
               hasSections ? (
-                <NavGroup key={group.id} title={t(group.titleKey)}>
-                  {group.entries.map(navItem)}
-                </NavGroup>
+                // A rule above each heading, so a section reads as starting
+                // there rather than as a label on the entries above it.
+                <Fragment key={group.id}>
+                  <NavItemSeparator />
+                  <NavGroup title={t(group.titleKey)}>
+                    {group.entries.map(navItem)}
+                  </NavGroup>
+                </Fragment>
               ) : (
                 group.entries.map(navItem)
               ),
