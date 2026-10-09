@@ -202,6 +202,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 toggle={(toggleRef) => (
                   <MenuToggle
                     ref={toggleRef}
+                    // Without a variant PatternFly gives this a bordered
+                    // button, beside a status indicator, a theme toggle and a
+                    // help menu that are all plain. plainText keeps the
+                    // caret and drops the border.
+                    variant="plainText"
                     onClick={() => setUserOpen(!isUserOpen)}
                     isExpanded={isUserOpen}
                     data-testid="current-user"

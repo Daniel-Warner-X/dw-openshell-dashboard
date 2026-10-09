@@ -321,7 +321,7 @@ const GlobalPolicyPage: React.FC = () => {
         </ModalBody>
         <ModalFooter>
           <Button
-            variant="danger"
+            variant="primary"
             onClick={submit}
             isDisabled={!canApply || setGlobalPolicy.isPending}
             isLoading={setGlobalPolicy.isPending}
