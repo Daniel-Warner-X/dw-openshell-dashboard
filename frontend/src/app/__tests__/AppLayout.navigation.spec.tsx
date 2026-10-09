@@ -100,7 +100,7 @@ describe('AppLayout navigation', () => {
     renderShell('/workspaces');
 
     expect(navLinks()).toEqual([
-      ['Gateway', '/gateway'],
+      ['Gateway report', '/gateway'],
       ['Workspaces', '/workspaces'],
       ['Proposals', '/proposals'],
       ['All resources', '/all-workspaces'],

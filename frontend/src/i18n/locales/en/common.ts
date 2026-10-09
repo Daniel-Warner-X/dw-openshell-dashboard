@@ -1,6 +1,6 @@
 export default {
   nav: {
-    gateway: 'Gateway',
+    gateway: 'Gateway report',
     workspaces: 'Workspaces',
     // The page lists sandboxes, providers, templates and services across
     // every workspace — resources, not workspaces, which is the question

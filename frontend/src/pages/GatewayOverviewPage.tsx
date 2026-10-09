@@ -513,7 +513,7 @@ const GatewayOverviewPage: React.FC = () => {
     <>
       <PageSection>
         <Title headingLevel="h1" className="pf-v6-u-mb-sm">
-          Gateway
+          Gateway report
         </Title>
         <Content component="p">
           Admin view of status, inventory, and alerts.

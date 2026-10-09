@@ -177,7 +177,7 @@ describe('AppLayout platform-admin gating', () => {
     renderShell('/workspaces', page);
 
     expect(navLink('Workspaces')).toBeInTheDocument();
-    expect(missingNavLink('Gateway')).not.toBeInTheDocument();
+    expect(missingNavLink('Gateway report')).not.toBeInTheDocument();
     expect(missingNavLink('Global policy')).not.toBeInTheDocument();
     expect(missingNavLink('Settings')).not.toBeInTheDocument();
   });
@@ -186,7 +186,7 @@ describe('AppLayout platform-admin gating', () => {
     mockUser({ roles: ['admin'] });
     renderShell('/workspaces', page);
 
-    expect(navLink('Gateway')).toBeInTheDocument();
+    expect(navLink('Gateway report')).toBeInTheDocument();
     expect(navLink('Workspaces')).toBeInTheDocument();
     expect(navLink('Global policy')).toBeInTheDocument();
     expect(navLink('Settings')).toBeInTheDocument();

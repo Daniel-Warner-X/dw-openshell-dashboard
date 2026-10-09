@@ -99,7 +99,7 @@ describe('AppLayout gateway health', () => {
     ).toHaveTextContent('HEALTHY');
     // The Gateway page is still not offered to this user.
     expect(
-      screen.queryByRole('link', { name: 'Gateway' }),
+      screen.queryByRole('link', { name: 'Gateway report' }),
     ).not.toBeInTheDocument();
   });
 
