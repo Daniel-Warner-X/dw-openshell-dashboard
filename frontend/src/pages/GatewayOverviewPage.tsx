@@ -368,8 +368,19 @@ const GatewayOverviewPage: React.FC = () => {
                   read as one thing said twice over rather than as two. The
                   gateway's health is not among these: it is in the masthead,
                   on every page, and saying it again a fold below itself is
-                  the same fact twice. */}
-              <DataList aria-label="Details" isCompact gridBreakpoint="none">
+                  the same fact twice.
+
+                  The margin is what keeps the last rule the length of the
+                  others. A card clips its content to a 16px corner radius, so
+                  a list flush with the bottom of one has the ends of its
+                  final rule cut off. Held a card's own bottom padding clear
+                  of the curve, the rule is drawn whole. */}
+              <DataList
+                aria-label="Details"
+                isCompact
+                gridBreakpoint="none"
+                className="pf-v6-u-mb-lg"
+              >
                 {details.map((item) => (
                   <CardListRow key={item.testId} {...item} />
                 ))}
@@ -386,11 +397,13 @@ const GatewayOverviewPage: React.FC = () => {
                     instead of stopping short of its padding. A column rather
                     than a band across the page: a figure right-aligned at the
                     far edge of a full-width card is a long way from the name
-                    of what it counts. */}
+                    of what it counts. The margin keeps the last rule off the
+                    card's rounded corner, which would otherwise clip it. */}
                 <DataList
                   aria-label="Inventory"
                   isCompact
                   gridBreakpoint="none"
+                  className="pf-v6-u-mb-lg"
                 >
                   {inventory.map((item) => (
                     <CardListRow key={item.testId} {...item} />
