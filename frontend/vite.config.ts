@@ -4,6 +4,8 @@ import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+import mockApiPlugin from './mock/mockPlugin';
+
 const pkg = JSON.parse(
   readFileSync(
     fileURLToPath(new URL('./package.json', import.meta.url)),
@@ -11,8 +13,10 @@ const pkg = JSON.parse(
   ),
 ) as { version: string };
 
+const useMockApi = process.env.MOCK_API === 'true';
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), ...(useMockApi ? [mockApiPlugin()] : [])],
   base: '/',
   resolve: {
     alias: {

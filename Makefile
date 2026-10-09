@@ -2,7 +2,7 @@
 -include scripts/.env.dev
 export OPENSHELL_DIR OPENSHELL_GATEWAY_URL GATEWAY_CA_CERT OIDC_ISSUER OIDC_CLIENT_ID
 
-.PHONY: setup dev dev-full dev-backend dev-frontend build build-frontend build-backend test lint lint-go typecheck format format-check clean
+.PHONY: setup dev dev-full dev-mock dev-backend dev-frontend build build-frontend build-backend test lint lint-go typecheck format format-check clean
 
 setup: ## Install frontend deps and Go deps
 	cd frontend && npm install
@@ -14,6 +14,12 @@ dev-full: ## Start Keycloak + gateway, then frontend + BFF (one command)
 
 dev: ## Start frontend dev server (:3000) and Go BFF (:8080)
 	@$(MAKE) -j2 dev-backend dev-frontend
+
+# UI work against fixtures instead of a gateway. A Vite middleware plugin
+# answers /api/v1 itself, so neither the BFF nor a gateway has to be running.
+# See mock-api-setup.md for what the fixtures cover.
+dev-mock: ## Start the frontend only (:3000), served from mock API data
+	cd frontend && MOCK_API=true npm start
 
 # The gateway range this checkout supports, for the BFF's compatibility notice.
 # It is DERIVED from the lanes CI requires in deploy/ci/gateway-pins.json —
