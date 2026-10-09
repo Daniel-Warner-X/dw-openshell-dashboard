@@ -6,6 +6,11 @@ import {
   CardBody,
   CardTitle,
   Content,
+  DataList,
+  DataListCell,
+  DataListItem,
+  DataListItemCells,
+  DataListItemRow,
   DescriptionList,
   DescriptionListDescription,
   DescriptionListGroup,
@@ -104,26 +109,39 @@ const countOf = (query: {
 }): number | undefined =>
   query.isError || !query.data ? undefined : query.data.length;
 
-type CountTileProps = {
+type InventoryItem = {
   label: string;
   value: string | number;
   to: string;
   testId: string;
 };
 
-// One figure and the page it came from, as a figure over its caption. The
-// tiles share a single card rather than being a card each: seven bordered
-// boxes reflowed into a six-and-one row, and a box sized for the widest
-// caption dwarfed the one-digit number in it.
-const CountTile: React.FC<CountTileProps> = ({ label, value, to, testId }) => (
-  <div data-testid={testId}>
-    <Title headingLevel="h3" size="2xl">
-      <Link to={to} aria-label={`${label}: ${value}`}>
-        {value}
-      </Link>
-    </Title>
-    <Content component="small">{label}</Content>
-  </div>
+// One row of the inventory, after PatternFly's own dashboard inventory card:
+// what there is on the left, how many of it on the right, as a link to the
+// page the count was read from. A link whose text is a bare figure says
+// nothing on its own, so it carries the name of what it counts as its label.
+const InventoryRow: React.FC<InventoryItem> = ({
+  label,
+  value,
+  to,
+  testId,
+}) => (
+  <DataListItem aria-labelledby={`${testId}-label`} data-testid={testId}>
+    <DataListItemRow>
+      <DataListItemCells
+        dataListCells={[
+          <DataListCell key="label" id={`${testId}-label`}>
+            {label}
+          </DataListCell>,
+          <DataListCell key="value" isFilled={false} alignRight>
+            <Link to={to} aria-label={`${label}: ${value}`}>
+              {value}
+            </Link>
+          </DataListCell>,
+        ]}
+      />
+    </DataListItemRow>
+  </DataListItem>
 );
 
 // Gateway overview — the dashboard's landing page for a platform admin. It
@@ -199,9 +217,9 @@ const GatewayOverviewPage: React.FC = () => {
       : settings.data.settings.filter((entry) => entry.value !== undefined)
           .length;
 
-  const tiles: CountTileProps[] = [];
+  const inventory: InventoryItem[] = [];
   if (workspaceCount !== undefined) {
-    tiles.push({
+    inventory.push({
       label: 'Workspaces',
       value: workspaceCount,
       to: '/workspaces',
@@ -209,7 +227,7 @@ const GatewayOverviewPage: React.FC = () => {
     });
   }
   if (sandboxCount !== undefined) {
-    tiles.push({
+    inventory.push({
       label: 'Sandboxes',
       value: sandboxCount,
       to: '/all-workspaces',
@@ -217,7 +235,7 @@ const GatewayOverviewPage: React.FC = () => {
     });
   }
   if (providerCount !== undefined) {
-    tiles.push({
+    inventory.push({
       label: 'Providers',
       value: providerCount,
       to: '/all-workspaces',
@@ -225,7 +243,7 @@ const GatewayOverviewPage: React.FC = () => {
     });
   }
   if (templateCount !== undefined) {
-    tiles.push({
+    inventory.push({
       label: 'Templates',
       value: templateCount,
       to: '/all-workspaces',
@@ -233,7 +251,7 @@ const GatewayOverviewPage: React.FC = () => {
     });
   }
   if (serviceCount !== undefined) {
-    tiles.push({
+    inventory.push({
       label: 'Services',
       value: serviceCount,
       to: '/all-workspaces',
@@ -241,7 +259,7 @@ const GatewayOverviewPage: React.FC = () => {
     });
   }
   if (policyInForce !== undefined) {
-    tiles.push({
+    inventory.push({
       label: 'Global policy',
       value: policyInForce ? 'In force' : 'None',
       to: '/global-policy',
@@ -249,7 +267,7 @@ const GatewayOverviewPage: React.FC = () => {
     });
   }
   if (settingCount !== undefined) {
-    tiles.push({
+    inventory.push({
       label: 'Custom settings',
       value: settingCount,
       to: '/settings',
@@ -429,28 +447,23 @@ const GatewayOverviewPage: React.FC = () => {
               </Card>
             </GridItem>
           ) : (
-            tiles.length > 0 && (
+            inventory.length > 0 && (
               <GridItem span={12}>
                 <Card data-testid="gateway-counts">
-                  <CardTitle>Inventory</CardTitle>
-                  <CardBody>
-                    {/* Equal columns at every count, rather than a fixed tile
-                        width that leaves the last one stranded on a row of
-                        its own. Below md they take their own width and wrap. */}
-                    <Flex
-                      flexWrap={{ default: 'wrap' }}
-                      gap={{ default: 'gapLg' }}
-                    >
-                      {tiles.map((tile) => (
-                        <FlexItem
-                          key={tile.testId}
-                          flex={{ default: 'flexNone', md: 'flex_1' }}
-                        >
-                          <CountTile {...tile} />
-                        </FlexItem>
-                      ))}
-                    </Flex>
-                  </CardBody>
+                  <CardTitle component="h2">Inventory</CardTitle>
+                  {/* Rows rather than tiles, after PatternFly's own dashboard
+                      inventory card. The list is a direct child of the card
+                      and not of a body, so each rule runs the card's full
+                      width instead of stopping short of its padding. */}
+                  <DataList
+                    aria-label="Inventory"
+                    isCompact
+                    gridBreakpoint="none"
+                  >
+                    {inventory.map((item) => (
+                      <InventoryRow key={item.testId} {...item} />
+                    ))}
+                  </DataList>
                 </Card>
               </GridItem>
             )
