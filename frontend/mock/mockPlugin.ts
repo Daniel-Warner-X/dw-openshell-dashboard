@@ -19,6 +19,12 @@ const isEmptyGateway = process.env.MOCK_EMPTY === 'true';
 // A list as the gateway would answer it in whichever mode is running.
 const orEmpty = <T>(items: T[]): T[] => (isEmptyGateway ? [] : items);
 
+const emptyDraftSummary = { sandboxes: [], totalPending: 0 };
+
+const workspaceDraftSummary = (workspace: string) =>
+  (isEmptyGateway ? undefined : data.workspaceDraftSummary[workspace]) ??
+  emptyDraftSummary;
+
 // Route patterns: :param captures a path segment.
 const routes: [string, RouteHandler][] = [
   // Auth
@@ -92,10 +98,18 @@ const routes: [string, RouteHandler][] = [
     data.draftPolicy],
   ['GET /api/v1/workspaces/:workspace/sandboxes/:sandbox/drafts/history', () => []],
 
-  // Draft summaries
-  ['GET /api/v1/draft-summary', () => data.draftSummary],
+  // Draft summaries. The scope is named, as the BFF reads it: ?workspace= is
+  // one workspace's, ?allWorkspaces=true is every workspace's, and neither is
+  // the empty answer the route has always given an unscoped poll.
+  ['GET /api/v1/draft-summary', (_params, query) => {
+    if (query.get('allWorkspaces') === 'true') {
+      return isEmptyGateway ? emptyDraftSummary : data.draftSummary;
+    }
+    const workspace = query.get('workspace');
+    return workspace ? workspaceDraftSummary(workspace) : emptyDraftSummary;
+  }],
   ['GET /api/v1/workspaces/:workspace/draft-summary', ({ workspace }) =>
-    data.workspaceDraftSummary[workspace] ?? { sandboxes: [], totalPending: 0 }],
+    workspaceDraftSummary(workspace)],
 
   // Global policy
   ['GET /api/v1/global-policy', () => data.globalPolicy],

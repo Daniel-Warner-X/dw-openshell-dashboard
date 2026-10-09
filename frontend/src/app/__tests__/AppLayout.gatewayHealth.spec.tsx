@@ -15,6 +15,10 @@ jest.mock('../../api/auth', () => ({
 jest.mock('../../api/rbac', () => ({
   useUserRole: () => ({ isPlatformAdmin: mockIsPlatformAdmin }),
 }));
+// The shell counts the rules waiting for a decision for its Proposals badge.
+jest.mock('../../api/draftSummary', () => ({
+  useAllWorkspacesDraftSummary: () => ({ totalPending: 0 }),
+}));
 jest.mock('../theme', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: jest.fn() }),
 }));

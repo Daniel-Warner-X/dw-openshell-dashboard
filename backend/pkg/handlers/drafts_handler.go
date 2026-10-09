@@ -69,14 +69,23 @@ func (h *DraftsHandler) GetWorkspaceDraftSummary(w http.ResponseWriter, r *http.
 }
 
 // GetDraftSummary is the summary outside a workspace route. With ?workspace=
-// it is that workspace's, the same answer as GetWorkspaceDraftSummary.
+// it is that workspace's, the same answer as GetWorkspaceDraftSummary. With
+// ?allWorkspaces=true it is every workspace's, which is what the Proposals
+// page asks for: the gateway answers the all-workspaces sandbox list for
+// platform admins only and refuses everyone else, and that refusal is
+// relayed as it is (ADR 0002).
 //
-// Without one it is empty, as it has always been. Frontends older than the
+// With neither it is empty, as it has always been. Frontends older than the
 // workspace route poll this URL without a workspace, every few seconds and
 // for every user. Answering them with a summary of every workspace would be
 // one draft read per sandbox on the gateway per poll, and a 403 for everyone
-// who is not a platform admin, where they have always had a 200.
+// who is not a platform admin, where they have always had a 200. So the
+// cross-workspace summary is asked for by name, never inferred.
 func (h *DraftsHandler) GetDraftSummary(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("allWorkspaces") == "true" {
+		h.writeDraftSummary(w, r, "", everyWorkspace(""))
+		return
+	}
 	workspace := r.URL.Query().Get("workspace")
 	if workspace == "" {
 		apiutils.WriteJSON(w, http.StatusOK, models.DraftSummary{Sandboxes: []models.DraftSandboxSummary{}})
@@ -85,13 +94,16 @@ func (h *DraftsHandler) GetDraftSummary(w http.ResponseWriter, r *http.Request) 
 	h.writeDraftSummary(w, r, workspace)
 }
 
-func (h *DraftsHandler) writeDraftSummary(w http.ResponseWriter, r *http.Request, workspace string) {
+// writeDraftSummary summarizes the sandboxes the given list options select.
+// Across workspaces the workspace argument is empty and the SDK ignores it;
+// each sandbox names its own, which summarizeDrafts prefers.
+func (h *DraftsHandler) writeDraftSummary(w http.ResponseWriter, r *http.Request, workspace string, opts ...openshell.ListOptions) {
 	if h.sandboxes == nil {
 		slog.Warn("draft summary requested, but the drafts handler was given no sandbox service")
 		apiutils.WriteJSON(w, http.StatusOK, models.DraftSummary{Sandboxes: []models.DraftSandboxSummary{}})
 		return
 	}
-	sandboxes, err := h.sandboxes.ListAll(r.Context(), workspace)
+	sandboxes, err := h.sandboxes.ListAll(r.Context(), workspace, opts...)
 	if err != nil {
 		apiutils.WriteSDKError(w, err)
 		return

@@ -6,6 +6,7 @@ import type { CurrentUser } from '../../types';
 
 let mockIsPlatformAdmin = false;
 let mockUser: CurrentUser | undefined;
+let mockPendingProposals = 0;
 
 jest.mock('../../api/gateway', () => ({
   useGatewayInfo: () => ({ isLoading: false, isError: false, data: undefined }),
@@ -17,10 +18,17 @@ jest.mock('../../api/gateway', () => ({
 }));
 jest.mock('../../api/auth', () => ({
   useCurrentUser: () => ({ data: mockUser }),
-  useFeatureFlags: () => ({ globalPolicy: true, settings: true }),
+  useFeatureFlags: () => ({
+    globalPolicy: true,
+    settings: true,
+    draftPolicy: true,
+  }),
 }));
 jest.mock('../../api/rbac', () => ({
   useUserRole: () => ({ isPlatformAdmin: mockIsPlatformAdmin }),
+}));
+jest.mock('../../api/draftSummary', () => ({
+  useAllWorkspacesDraftSummary: () => ({ totalPending: mockPendingProposals }),
 }));
 jest.mock('../theme', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: jest.fn() }),
@@ -82,6 +90,7 @@ describe('AppLayout navigation', () => {
   beforeEach(() => {
     mockIsPlatformAdmin = false;
     mockUser = { subject: 'user-1', roles: [] };
+    mockPendingProposals = 0;
   });
 
   // The lists across workspaces are answered for platform admins only, so
@@ -93,6 +102,7 @@ describe('AppLayout navigation', () => {
     expect(navLinks()).toEqual([
       ['Gateway', '/gateway'],
       ['Workspaces', '/workspaces'],
+      ['Proposals', '/proposals'],
       ['All resources', '/all-workspaces'],
       ['Provider profiles', '/provider-profiles'],
       ['Global policy', '/global-policy'],
@@ -100,10 +110,31 @@ describe('AppLayout navigation', () => {
     ]);
   });
 
+  // Proposals are a sandbox's, not the platform's: a standard user reviews
+  // the ones in the workspaces they are a member of, so the entry is theirs
+  // too. Only All resources is withheld.
   it('does not offer it to anyone else', () => {
     renderShell('/workspaces');
 
-    expect(navLinks()).toEqual([['Workspaces', '/workspaces']]);
+    expect(navLinks()).toEqual([
+      ['Workspaces', '/workspaces'],
+      ['Proposals', '/proposals'],
+    ]);
+  });
+
+  // The badge is the whole point of the entry: how many rules are waiting for
+  // a decision, without opening the page.
+  it('counts the pending proposals on the entry', () => {
+    mockPendingProposals = 3;
+    renderShell('/workspaces');
+
+    expect(screen.getByTestId('proposals-badge')).toHaveTextContent('3');
+  });
+
+  it('badges nothing when nothing is waiting', () => {
+    renderShell('/workspaces');
+
+    expect(screen.queryByTestId('proposals-badge')).not.toBeInTheDocument();
   });
 
   // Gateway leads, ungrouped: the landing page is not one of a set.

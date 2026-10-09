@@ -14,6 +14,11 @@ jest.mock('../../api/auth', () => ({
   useFeatureFlags: () => ({ globalPolicy: true, settings: true }),
 }));
 // Real useUserRole — badge/nav cases set roles on useCurrentUser below.
+// The shell counts the rules waiting for a decision for its Proposals badge.
+// Nothing is pending here; AppLayout.navigation.spec covers the badge itself.
+jest.mock('../../api/draftSummary', () => ({
+  useAllWorkspacesDraftSummary: () => ({ totalPending: 0 }),
+}));
 jest.mock('../theme', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: jest.fn() }),
 }));

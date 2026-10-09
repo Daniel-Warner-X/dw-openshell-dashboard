@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Badge,
   Button,
   Divider,
   Dropdown,
@@ -37,6 +38,7 @@ import { Link, useLocation } from 'react-router-dom';
 import openshellLogo from '~/assets/openshell-logo.svg';
 import openshellLogoDark from '~/assets/openshell-logo-dark.svg';
 import { useCurrentUser, useFeatureFlags } from '../api/auth';
+import { useAllWorkspacesDraftSummary } from '../api/draftSummary';
 import { useUserRole } from '../api/rbac';
 import CurrentUserModal from '../components/CurrentUserModal';
 import GatewayCompatibilityAlert from '../components/GatewayCompatibilityAlert';
@@ -61,6 +63,7 @@ type NavEntry = {
   labelKey:
     | 'nav.gateway'
     | 'nav.workspaces'
+    | 'nav.proposals'
     | 'nav.allWorkspaces'
     | 'nav.providerProfiles'
     | 'nav.globalPolicy'
@@ -84,6 +87,12 @@ const navGroups: {
 const navEntries: NavEntry[] = [
   { path: '/gateway', labelKey: 'nav.gateway', adminOnly: true },
   { path: '/workspaces', labelKey: 'nav.workspaces', group: 'workspaces' },
+  {
+    path: '/proposals',
+    labelKey: 'nav.proposals',
+    group: 'workspaces',
+    featureKey: 'draftPolicy',
+  },
   {
     path: '/all-workspaces',
     labelKey: 'nav.allWorkspaces',
@@ -123,6 +132,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [isIdentityOpen, setIdentityOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const logoSrc = theme === 'dark' ? openshellLogoDark : openshellLogo;
+
+  // How many rules are waiting for a decision, on the Proposals entry. Read
+  // for a platform admin only, and not because proposals are theirs: this is
+  // the shell, mounted on every page, and the gateway's cross-workspace
+  // summary is the one shape of this read that is a single request. Reading
+  // it the way a standard user has to — one request per workspace they are in
+  // — would put that behind every page they open. The page itself does that
+  // read, once, where someone is looking at it. The same query the Proposals
+  // page uses, so an admin who is on it is not polling it twice.
+  const { totalPending: pendingProposals } = useAllWorkspacesDraftSummary(
+    features.draftPolicy && isPlatformAdmin,
+  );
 
   const masthead = (
     <Masthead
@@ -305,6 +326,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       component={(props) => <Link {...props} to={entry.path} />}
     >
       {t(entry.labelKey)}
+      {entry.path === '/proposals' && pendingProposals > 0 && (
+        <Badge isRead className="pf-v6-u-ml-sm" data-testid="proposals-badge">
+          {pendingProposals}
+        </Badge>
+      )}
     </NavItem>
   );
 

@@ -20,6 +20,7 @@ import SandboxDetailPage from '../pages/SandboxDetailPage';
 import ProviderDetailPage from '../pages/ProviderDetailPage';
 import ProviderProfilesPage from '../pages/ProviderProfilesPage';
 import GlobalPolicyPage from '../pages/GlobalPolicyPage';
+import ProposalsPage from '../pages/ProposalsPage';
 import SettingsPage from '../pages/SettingsPage';
 import { useUserRole } from '../api/rbac';
 import { useI18n } from '../i18n';
@@ -174,6 +175,11 @@ const AuthenticatedRoutes: React.FC = () => (
           </AdminRoute>
         }
       />
+      {/* Not behind AdminRoute: proposals are a sandbox's, and a standard
+          user reviews the ones in the workspaces they are a member of. Only
+          the cross-workspace rollup needs a platform admin, and the page
+          falls back to a request per workspace without one. */}
+      <Route path="/proposals" element={<ProposalsPage />} />
       <Route path="/workspaces" element={<WorkspaceListRoute />} />
       <Route path="/workspaces/:workspace" element={<WorkspaceDetailRoute />} />
       <Route

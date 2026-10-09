@@ -7,6 +7,7 @@ export default {
     // "what is the difference between Workspaces and All workspaces?" that
     // the old label invited.
     allWorkspaces: 'All resources',
+    proposals: 'Proposals',
     providerProfiles: 'Provider profiles',
     globalPolicy: 'Global policy',
     settings: 'Settings',

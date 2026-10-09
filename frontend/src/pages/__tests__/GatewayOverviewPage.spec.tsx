@@ -18,11 +18,15 @@ jest.mock('../../api/allWorkspaces', () => ({
 jest.mock('../../api/workspaces', () => ({ useWorkspaces: jest.fn() }));
 jest.mock('../../api/policy', () => ({ useGlobalPolicy: jest.fn() }));
 jest.mock('../../api/settings', () => ({ useGlobalSettings: jest.fn() }));
+jest.mock('../../api/draftSummary', () => ({
+  useAllWorkspacesDraftSummary: jest.fn(),
+}));
 jest.mock('../../api/auth', () => ({
   useFeatureFlags: () => ({
     services: true,
     globalPolicy: true,
     settings: true,
+    draftPolicy: true,
   }),
 }));
 
@@ -32,6 +36,7 @@ import {
   useAllServices,
   useAllTemplates,
 } from '../../api/allWorkspaces';
+import { useAllWorkspacesDraftSummary } from '../../api/draftSummary';
 import { useGatewayCompatibility, useGatewayInfo } from '../../api/gateway';
 import { useGlobalPolicy } from '../../api/policy';
 import { useGlobalSettings } from '../../api/settings';
@@ -46,6 +51,7 @@ const mockUseAllServices = useAllServices as jest.Mock;
 const mockUseWorkspaces = useWorkspaces as jest.Mock;
 const mockUseGlobalPolicy = useGlobalPolicy as jest.Mock;
 const mockUseGlobalSettings = useGlobalSettings as jest.Mock;
+const mockUseDraftSummary = useAllWorkspacesDraftSummary as jest.Mock;
 
 const answered = (data: unknown) => ({
   isLoading: false,
@@ -82,6 +88,11 @@ const answerEverythingElse = () => {
   mockUseAllServices.mockReturnValue(answered([]));
   mockUseGlobalPolicy.mockReturnValue(answered({ activeVersion: 0 }));
   mockUseGlobalSettings.mockReturnValue(answered({ settings: [] }));
+  mockUseDraftSummary.mockReturnValue({
+    ...answered(undefined),
+    items: [],
+    totalPending: 0,
+  });
 };
 
 const renderPage = () =>
@@ -263,6 +274,30 @@ describe('GatewayOverviewPage', () => {
     expect(
       attention.getByText(/^No providers/, { selector: 'a' }),
     ).toBeInTheDocument();
+  });
+
+  // A rule an agent proposed is a sandbox held up until somebody decides on
+  // it, so it leads the list, and it leads to the page where that is done.
+  it('leads with the rules waiting for a decision', () => {
+    mockUseGatewayInfo.mockReturnValue(
+      answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
+    );
+    mockUseDraftSummary.mockReturnValue({
+      ...answered(undefined),
+      items: [],
+      totalPending: 3,
+    });
+    mockUseAllSandboxes.mockReturnValue(
+      answered([sandbox('agent', 'READY'), sandbox('builder', 'ERROR')]),
+    );
+    renderPage();
+
+    const rows = within(screen.getByTestId('gateway-attention')).getAllByRole(
+      'link',
+    );
+    expect(rows[0]).toHaveTextContent('3 policy rules waiting for a decision');
+    expect(rows[0]).toHaveAttribute('href', '/proposals');
+    expect(rows[1]).toHaveTextContent('1 sandbox in error');
   });
 
   it('displays compute drivers table', () => {

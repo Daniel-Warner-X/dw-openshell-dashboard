@@ -38,6 +38,7 @@ import {
   useAllTemplates,
 } from '../api/allWorkspaces';
 import { useFeatureFlags } from '../api/auth';
+import { useAllWorkspacesDraftSummary } from '../api/draftSummary';
 import { useGatewayCompatibility, useGatewayInfo } from '../api/gateway';
 import { useGlobalPolicy } from '../api/policy';
 import { useGlobalSettings } from '../api/settings';
@@ -174,6 +175,9 @@ const GatewayOverviewPage: React.FC = () => {
   const services = useAllServices({ enabled: features.services });
   const globalPolicy = useGlobalPolicy(features.globalPolicy);
   const settings = useGlobalSettings(features.settings);
+  // The same query the shell's Proposals badge reads, so this costs the
+  // gateway nothing beyond what the badge already asks for.
+  const proposals = useAllWorkspacesDraftSummary(features.draftPolicy);
 
   if (gateway.isLoading) {
     return (
@@ -299,6 +303,17 @@ const GatewayOverviewPage: React.FC = () => {
   // the strip above, and the app shell raises a notice above every page when
   // it is a problem.
   const attention: { key: string; text: string; to: string }[] = [];
+  // First: a rule an agent proposed is a sandbox held up until somebody
+  // decides on it.
+  if (proposals.totalPending > 0) {
+    attention.push({
+      key: 'proposals',
+      text: `${proposals.totalPending} policy ${
+        proposals.totalPending === 1 ? 'rule' : 'rules'
+      } waiting for a decision`,
+      to: '/proposals',
+    });
+  }
   if (erroredSandboxes.length > 0) {
     attention.push({
       key: 'errored',
