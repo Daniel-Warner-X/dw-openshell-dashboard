@@ -104,13 +104,6 @@ const renderPage = () =>
     </MemoryRouter>,
   );
 
-// The drivers and the extensions sit below a fold. Role queries skip them
-// while they are collapsed: PatternFly marks the hidden content `hidden`.
-const expand = (testId: string) =>
-  fireEvent.click(
-    within(screen.getByTestId(testId)).getByRole('button', { hidden: true }),
-  );
-
 describe('GatewayOverviewPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -440,7 +433,6 @@ describe('GatewayOverviewPage', () => {
     renderPage();
 
     expect(screen.getByText('Extensions (2)')).toBeInTheDocument();
-    expand('gateway-extensions-expand');
 
     const card = within(screen.getByTestId('gateway-extensions-card'));
     expect(

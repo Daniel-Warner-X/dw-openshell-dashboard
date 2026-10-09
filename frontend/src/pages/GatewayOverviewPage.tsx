@@ -16,7 +16,6 @@ import {
   Dropdown,
   DropdownItem,
   DropdownList,
-  ExpandableSection,
   Flex,
   FlexItem,
   Grid,
@@ -794,102 +793,103 @@ const GatewayOverviewPage: React.FC = () => {
               </Card>
             </GridItem>
           )}
+          {/* What the gateway negotiated at start-up, each table under a
+              heading of its own rather than behind a fold. There are a
+              handful of rows in each on any real gateway, and a count in a
+              toggle that has to be opened to see what it counts asks for a
+              click to learn what the page could have said outright. */}
           <GridItem span={12}>
-            <ExpandableSection
-              toggleText={`Compute drivers (${(info?.computeDrivers ?? []).length})`}
-              data-testid="gateway-drivers-expand"
-            >
-              <Card data-testid="gateway-drivers-card">
-                <CardBody>
-                  <Table aria-label="Compute drivers" variant="compact">
-                    <Thead>
-                      <Tr>
-                        <Th>Name</Th>
-                        <Th>Driver</Th>
-                        <Th>Version</Th>
+            <Card data-testid="gateway-drivers-card">
+              <CardTitle component="h2">
+                {`Compute drivers (${(info?.computeDrivers ?? []).length})`}
+              </CardTitle>
+              <CardBody>
+                <Table aria-label="Compute drivers" variant="compact">
+                  <Thead>
+                    <Tr>
+                      <Th>Name</Th>
+                      <Th>Driver</Th>
+                      <Th>Version</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {(info?.computeDrivers ?? []).map((driver) => (
+                      <Tr key={driver.name}>
+                        <Td dataLabel="Name">{driver.name}</Td>
+                        <Td dataLabel="Driver">{driver.driverName || '-'}</Td>
+                        <Td dataLabel="Version">
+                          {driver.driverVersion || '-'}
+                        </Td>
                       </Tr>
-                    </Thead>
-                    <Tbody>
-                      {(info?.computeDrivers ?? []).map((driver) => (
-                        <Tr key={driver.name}>
-                          <Td dataLabel="Name">{driver.name}</Td>
-                          <Td dataLabel="Driver">{driver.driverName || '-'}</Td>
-                          <Td dataLabel="Version">
-                            {driver.driverVersion || '-'}
-                          </Td>
-                        </Tr>
-                      ))}
-                      {(info?.computeDrivers ?? []).length === 0 && (
-                        <Tr>
-                          <Td colSpan={3}>No compute drivers reported</Td>
-                        </Tr>
-                      )}
-                    </Tbody>
-                  </Table>
-                </CardBody>
-              </Card>
-            </ExpandableSection>
-            <ExpandableSection
-              toggleText={`Extensions (${extensions.length})`}
-              data-testid="gateway-extensions-expand"
-            >
-              <Card data-testid="gateway-extensions-card">
-                <CardBody>
-                  <Table aria-label="Extensions" variant="compact">
-                    <Thead>
+                    ))}
+                    {(info?.computeDrivers ?? []).length === 0 && (
                       <Tr>
-                        <Th>Name</Th>
-                        <Th>Kind</Th>
-                        <Th>Implementation</Th>
-                        <Th>Protocol</Th>
-                        <Th>Capabilities</Th>
-                        <Th>Requires from gateway</Th>
+                        <Td colSpan={3}>No compute drivers reported</Td>
                       </Tr>
-                    </Thead>
-                    <Tbody>
-                      {extensions.map((extension) => (
-                        <Tr
-                          key={`${extension.kind}/${extension.configuredName}`}
-                        >
-                          <Td dataLabel="Name">
-                            {extension.configuredName || '-'}
-                          </Td>
-                          <Td dataLabel="Kind">
-                            {extensionKindLabel(extension.kind)}
-                          </Td>
-                          <Td dataLabel="Implementation">
-                            {[
-                              extension.implementationName,
-                              extension.implementationVersion,
-                            ]
-                              .filter(Boolean)
-                              .join(' ') || '-'}
-                          </Td>
-                          <Td dataLabel="Protocol">
-                            {extension.protocolMajor}.{extension.protocolMinor}
-                          </Td>
-                          <Td dataLabel="Capabilities">
-                            <CapabilityList
-                              capabilities={extension.supportedCapabilities}
-                            />
-                          </Td>
-                          <Td dataLabel="Requires from gateway">
-                            <CapabilityList
-                              capabilities={extension.requiredCapabilities}
-                            />
-                          </Td>
-                        </Tr>
-                      ))}
-                      {extensions.length === 0 && (
-                        <Tr>
-                          <Td colSpan={6}>No extensions reported</Td>
-                        </Tr>
-                      )}
-                    </Tbody>
-                  </Table>
-                </CardBody>
-              </Card>
-            </ExpandableSection>
+                    )}
+                  </Tbody>
+                </Table>
+              </CardBody>
+            </Card>
+          </GridItem>
+          <GridItem span={12}>
+            <Card data-testid="gateway-extensions-card">
+              <CardTitle component="h2">
+                {`Extensions (${extensions.length})`}
+              </CardTitle>
+              <CardBody>
+                <Table aria-label="Extensions" variant="compact">
+                  <Thead>
+                    <Tr>
+                      <Th>Name</Th>
+                      <Th>Kind</Th>
+                      <Th>Implementation</Th>
+                      <Th>Protocol</Th>
+                      <Th>Capabilities</Th>
+                      <Th>Requires from gateway</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {extensions.map((extension) => (
+                      <Tr key={`${extension.kind}/${extension.configuredName}`}>
+                        <Td dataLabel="Name">
+                          {extension.configuredName || '-'}
+                        </Td>
+                        <Td dataLabel="Kind">
+                          {extensionKindLabel(extension.kind)}
+                        </Td>
+                        <Td dataLabel="Implementation">
+                          {[
+                            extension.implementationName,
+                            extension.implementationVersion,
+                          ]
+                            .filter(Boolean)
+                            .join(' ') || '-'}
+                        </Td>
+                        <Td dataLabel="Protocol">
+                          {extension.protocolMajor}.{extension.protocolMinor}
+                        </Td>
+                        <Td dataLabel="Capabilities">
+                          <CapabilityList
+                            capabilities={extension.supportedCapabilities}
+                          />
+                        </Td>
+                        <Td dataLabel="Requires from gateway">
+                          <CapabilityList
+                            capabilities={extension.requiredCapabilities}
+                          />
+                        </Td>
+                      </Tr>
+                    ))}
+                    {extensions.length === 0 && (
+                      <Tr>
+                        <Td colSpan={6}>No extensions reported</Td>
+                      </Tr>
+                    )}
+                  </Tbody>
+                </Table>
+              </CardBody>
+            </Card>
           </GridItem>
         </Grid>
       </PageSection>
