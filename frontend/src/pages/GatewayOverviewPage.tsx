@@ -359,7 +359,10 @@ const GatewayOverviewPage: React.FC = () => {
             is the gateway well, what is on it, and is anything waiting. */}
         <Grid hasGutter>
           <GridItem lg={showInventory ? 5 : 8} md={12}>
-            <Card isFullHeight data-testid="gateway-status-card">
+            {/* Not full height. A list card stretched to the tallest card of
+                the row ends in a band of empty card below its last rule,
+                which reads as a footer with nothing in it. */}
+            <Card data-testid="gateway-status-card">
               <CardTitle component="h2">Details</CardTitle>
               {/* The same list the inventory is, so the two cards of the row
                   read as one thing said twice over rather than as two. The
@@ -375,7 +378,7 @@ const GatewayOverviewPage: React.FC = () => {
           </GridItem>
           {showInventory && (
             <GridItem lg={3} md={6}>
-              <Card isFullHeight data-testid="gateway-counts">
+              <Card data-testid="gateway-counts">
                 <CardTitle component="h2">Inventory</CardTitle>
                 {/* Rows rather than tiles, after PatternFly's own dashboard
                     inventory card. The list is a direct child of the card and
