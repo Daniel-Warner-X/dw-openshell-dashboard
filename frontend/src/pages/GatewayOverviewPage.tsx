@@ -26,12 +26,7 @@ import {
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import {
-  CheckCircleIcon,
-  ExclamationCircleIcon,
-  ExclamationTriangleIcon,
-  QuestionCircleIcon,
-} from '@patternfly/react-icons';
+import { CheckCircleIcon } from '@patternfly/react-icons';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { Link } from 'react-router-dom';
 
@@ -48,39 +43,7 @@ import { useGlobalPolicy } from '../api/policy';
 import { useGlobalSettings } from '../api/settings';
 import { useWorkspaces } from '../api/workspaces';
 import { APP_VERSION } from '../constants';
-import type {
-  GatewayCompatibility,
-  GatewayExtensionKind,
-  ServiceStatus,
-} from '../types';
-
-const statusColor = (
-  status: ServiceStatus,
-): 'green' | 'orange' | 'red' | 'grey' => {
-  switch (status) {
-    case 'HEALTHY':
-      return 'green';
-    case 'DEGRADED':
-      return 'orange';
-    case 'UNHEALTHY':
-      return 'red';
-    default:
-      return 'grey';
-  }
-};
-
-const statusIcon = (status: ServiceStatus) => {
-  switch (status) {
-    case 'HEALTHY':
-      return <CheckCircleIcon />;
-    case 'DEGRADED':
-      return <ExclamationTriangleIcon />;
-    case 'UNHEALTHY':
-      return <ExclamationCircleIcon />;
-    default:
-      return <QuestionCircleIcon />;
-  }
-};
+import type { GatewayCompatibility, GatewayExtensionKind } from '../types';
 
 // The BFF's verdict on the gateway, in a few words. The notice that explains
 // what an unsupported gateway does to the rest of the dashboard is the one
@@ -215,7 +178,6 @@ const GatewayOverviewPage: React.FC = () => {
   const info = gateway.data;
   // Absent from a BFF that predates the field.
   const extensions = info?.extensions ?? [];
-  const status = info?.status ?? 'UNSPECIFIED';
 
   const workspaceCount = countOf(workspaces);
   const sandboxCount = countOf(sandboxes);
@@ -360,17 +322,9 @@ const GatewayOverviewPage: React.FC = () => {
                     horizontal term column is 12ch, which two of these four
                     terms would wrap in. */}
                 <DescriptionList isHorizontal isFluid isCompact>
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>Status</DescriptionListTerm>
-                    <DescriptionListDescription>
-                      <Label
-                        color={statusColor(status)}
-                        icon={statusIcon(status)}
-                      >
-                        {info?.status ?? 'UNKNOWN'}
-                      </Label>
-                    </DescriptionListDescription>
-                  </DescriptionListGroup>
+                  {/* The gateway's health is in the masthead, on every page.
+                      Saying it again here, a scroll below itself, is the
+                      same fact twice. */}
                   <DescriptionListGroup>
                     <DescriptionListTerm>Gateway version</DescriptionListTerm>
                     <DescriptionListDescription data-testid="gateway-version">

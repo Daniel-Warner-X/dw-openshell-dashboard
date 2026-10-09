@@ -142,9 +142,9 @@ describe('GatewayOverviewPage', () => {
     expect(screen.getByText('Retry')).toBeInTheDocument();
   });
 
-  // One strip, not a card each: status, both versions and the verdict that
-  // relates them.
-  it('states the gateway status, both versions and the verdict together', () => {
+  // One strip, not a card each: both versions and the verdict that relates
+  // them. The gateway's health is the masthead's, on every page.
+  it('states both versions and the verdict together, and not the health', () => {
     const info: GatewayInfo = {
       status: 'HEALTHY',
       gatewayVersion: '0.1.2',
@@ -166,7 +166,7 @@ describe('GatewayOverviewPage', () => {
     renderPage();
 
     const strip = within(screen.getByTestId('gateway-status-card'));
-    expect(strip.getByText('HEALTHY')).toBeInTheDocument();
+    expect(strip.queryByText('HEALTHY')).not.toBeInTheDocument();
     expect(strip.getByTestId('gateway-version')).toHaveTextContent('0.1.2');
     expect(strip.getByTestId('dashboard-version')).toHaveTextContent(
       APP_VERSION,
