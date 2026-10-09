@@ -11,6 +11,10 @@ import {
   DataListItem,
   DataListItemCells,
   DataListItemRow,
+  DescriptionList,
+  DescriptionListDescription,
+  DescriptionListGroup,
+  DescriptionListTerm,
   ExpandableSection,
   Flex,
   FlexItem,
@@ -19,15 +23,17 @@ import {
   Icon,
   Label,
   LabelGroup,
-  List,
-  ListItem,
   PageSection,
   ProgressStep,
   ProgressStepper,
   Spinner,
   Title,
 } from '@patternfly/react-core';
-import { CheckCircleIcon } from '@patternfly/react-icons';
+import {
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
+} from '@patternfly/react-icons';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { Link } from 'react-router-dom';
 
@@ -104,6 +110,15 @@ const countOf = (query: {
   isError: boolean;
 }): number | undefined =>
   query.isError || !query.data ? undefined : query.data.length;
+
+// The icon beside a line in Needs attention. Danger is something that has
+// already gone wrong; warning is something that will unless it is dealt
+// with. The same two the masthead's health indicator uses, so one shape
+// means one thing across the page.
+const ATTENTION_ICON = {
+  danger: <ExclamationCircleIcon />,
+  warning: <ExclamationTriangleIcon />,
+} as const;
 
 type CardRow = {
   label: string;
@@ -313,31 +328,53 @@ const GatewayOverviewPage: React.FC = () => {
   // done. The gateway's own version verdict is not repeated here: it is in
   // the strip above, and the app shell raises a notice above every page when
   // it is a problem.
-  const attention: { key: string; text: string; to: string }[] = [];
+  //
+  // After PatternFly's own dashboard events card: a status icon and a short
+  // title that is the link, then a sentence under it saying what the title
+  // means and what is to be done about it. The headline alone is a count
+  // without a consequence, which is what the old bulleted alert was.
+  const attention: {
+    key: string;
+    status: 'warning' | 'danger';
+    text: string;
+    detail: string;
+    to: string;
+  }[] = [];
   // First: a rule an agent proposed is a sandbox held up until somebody
   // decides on it.
   if (proposals.totalPending > 0) {
     attention.push({
       key: 'proposals',
+      status: 'warning',
       text: `${proposals.totalPending} policy ${
         proposals.totalPending === 1 ? 'rule' : 'rules'
       } waiting for a decision`,
+      detail: `An agent proposed ${
+        proposals.totalPending === 1 ? 'it' : 'them'
+      }. Each takes effect only once somebody approves it.`,
       to: '/proposals',
     });
   }
   if (erroredSandboxes.length > 0) {
     attention.push({
       key: 'errored',
+      status: 'danger',
       text: `${erroredSandboxes.length} sandbox${
         erroredSandboxes.length === 1 ? '' : 'es'
       } in error`,
+      detail: `Provisioning failed, or the main process exited non-zero. The sandbox ${
+        erroredSandboxes.length === 1 ? 'log says' : 'logs say'
+      } which.`,
       to: '/all-workspaces',
     });
   }
   if (!isEmpty && providerCount === 0) {
     attention.push({
       key: 'no-providers',
-      text: 'No providers — sandboxes have no credentials to reach a model or a service',
+      status: 'warning',
+      text: 'No providers',
+      detail:
+        'Sandboxes have no credentials to reach a model or a service until one is added.',
       to: '/all-workspaces',
     });
   }
@@ -416,23 +453,39 @@ const GatewayOverviewPage: React.FC = () => {
               nothing is, so the row is whole either way. */}
           <GridItem lg={4} md={6}>
             {attention.length > 0 ? (
-              <Alert
-                variant="warning"
-                isInline
-                title="Needs attention"
-                component="h2"
-                data-testid="gateway-attention"
-              >
-                <List isPlain>
-                  {attention.map((item) => (
-                    <ListItem key={item.key}>
-                      <Link to={item.to}>{item.text}</Link>
-                    </ListItem>
-                  ))}
-                </List>
-              </Alert>
+              // A card of its own rather than an inline alert, so the three
+              // columns of the row are three cards and the heading of each
+              // is in the same place. An alert's amber bar shouted the whole
+              // column at a page that is read before anything has gone
+              // wrong; the colour belongs on the one line it is about.
+              <Card data-testid="gateway-attention">
+                <CardTitle component="h2">Needs attention</CardTitle>
+                <CardBody>
+                  <DescriptionList isCompact>
+                    {attention.map((item) => (
+                      <DescriptionListGroup key={item.key}>
+                        <DescriptionListTerm
+                          icon={
+                            <Icon status={item.status}>
+                              {ATTENTION_ICON[item.status]}
+                            </Icon>
+                          }
+                        >
+                          <Link to={item.to}>{item.text}</Link>
+                        </DescriptionListTerm>
+                        <DescriptionListDescription>
+                          {item.detail}
+                        </DescriptionListDescription>
+                      </DescriptionListGroup>
+                    ))}
+                  </DescriptionList>
+                </CardBody>
+              </Card>
             ) : (
-              <Card isFullHeight isPlain data-testid="gateway-all-clear">
+              // The same card with the same heading, so that the column does
+              // not change shape when the last thing waiting is dealt with.
+              <Card data-testid="gateway-all-clear">
+                <CardTitle component="h2">Needs attention</CardTitle>
                 <CardBody>
                   <Flex
                     alignItems={{ default: 'alignItemsCenter' }}
