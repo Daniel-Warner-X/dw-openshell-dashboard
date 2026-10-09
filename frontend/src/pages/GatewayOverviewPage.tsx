@@ -355,14 +355,11 @@ const GatewayOverviewPage: React.FC = () => {
           <GridItem lg={8}>
             <Card isFullHeight data-testid="gateway-status-card">
               <CardBody>
-                {/* Inline-grid, so the four facts cluster at their own width
-                    instead of being stretched the width of the card. */}
-                <DescriptionList
-                  isAutoFit
-                  autoFitMinModifier={{ default: '180px' }}
-                  isInlineGrid
-                  isCompact
-                >
+                {/* Horizontal, so each value reads beside the thing it is the
+                    value of rather than under it. Fluid with it: PatternFly's
+                    horizontal term column is 12ch, which two of these four
+                    terms would wrap in. */}
+                <DescriptionList isHorizontal isFluid isCompact>
                   <DescriptionListGroup>
                     <DescriptionListTerm>Status</DescriptionListTerm>
                     <DescriptionListDescription>
