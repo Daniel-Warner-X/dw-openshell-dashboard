@@ -343,7 +343,7 @@ const GatewayOverviewPage: React.FC = () => {
           Gateway
         </Title>
         <Content component="p">
-          Admin view of status, inventory, and alerts for this gateway.
+          Admin view of status, inventory, and alerts.
         </Content>
       </PageSection>
       <PageSection>
