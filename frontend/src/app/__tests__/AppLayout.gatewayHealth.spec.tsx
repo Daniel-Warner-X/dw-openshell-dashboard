@@ -96,7 +96,7 @@ describe('AppLayout gateway health', () => {
     // ...and the health is there all the same.
     expect(
       masthead().getByTestId('gateway-status-indicator'),
-    ).toHaveTextContent('Gateway healthy');
+    ).toHaveTextContent('Healthy');
     // The Gateway page is still not offered to this user.
     expect(
       screen.queryByRole('link', { name: 'Gateway' }),
@@ -110,7 +110,7 @@ describe('AppLayout gateway health', () => {
 
     expect(
       masthead().getByTestId('gateway-status-indicator'),
-    ).toHaveTextContent('Gateway not healthy');
+    ).toHaveTextContent('Not healthy');
   });
 
   it('says the gateway is unreachable when the health request fails for that reason', () => {
@@ -132,7 +132,7 @@ describe('AppLayout gateway health', () => {
 
     expect(
       masthead().getByTestId('gateway-status-indicator'),
-    ).toHaveTextContent('Gateway unreachable');
+    ).toHaveTextContent('Unreachable');
   });
 
   // The shell stays mounted while the routes change under it, so the status

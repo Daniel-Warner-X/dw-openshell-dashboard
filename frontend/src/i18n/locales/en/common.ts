@@ -71,10 +71,13 @@ export default {
   },
   // What the gateway's own health check says, shown in the masthead.
   gatewayHealth: {
-    healthy: 'Gateway healthy',
-    notHealthy: 'Gateway not healthy',
-    unreachable: 'Gateway unreachable',
-    unknown: 'Gateway status unknown',
+    // What the label beside it is the value of. The states no longer name
+    // the gateway themselves.
+    label: 'Gateway status:',
+    healthy: 'Healthy',
+    notHealthy: 'Not healthy',
+    unreachable: 'Unreachable',
+    unknown: 'Unknown',
   },
   actions: {
     retry: 'Retry',
