@@ -334,7 +334,9 @@ const GatewayOverviewPage: React.FC = () => {
   return (
     <>
       <PageSection>
-        <Title headingLevel="h1">Gateway</Title>
+        <Title headingLevel="h1" className="pf-v6-u-mb-sm">
+          Gateway
+        </Title>
         <Content component="p">
           The OpenShell gateway this dashboard is talking to: its health, what
           is on it, and the compute drivers and extensions it negotiated at

@@ -144,7 +144,9 @@ const GlobalPolicyPage: React.FC = () => {
   return (
     <>
       <PageSection>
-        <Title headingLevel="h1">Global policy</Title>
+        <Title headingLevel="h1" className="pf-v6-u-mb-sm">
+          Global policy
+        </Title>
         <Content component="p">
           A gateway-global policy applies to all sandboxes in full (no merge
           with per-sandbox policies). This is the platform ceiling mechanism —

@@ -147,7 +147,9 @@ const ProposalsPage: React.FC = () => {
   return (
     <>
       <PageSection>
-        <Title headingLevel="h1">Proposals</Title>
+        <Title headingLevel="h1" className="pf-v6-u-mb-sm">
+          Proposals
+        </Title>
         <Content component="p">
           Policy rules proposed by the agents running in your sandboxes, and
           waiting for a decision. Select a sandbox to review, edit, approve or

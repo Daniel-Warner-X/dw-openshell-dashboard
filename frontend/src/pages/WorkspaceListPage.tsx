@@ -229,7 +229,9 @@ const WorkspaceListPage: React.FC<WorkspaceListPageProps> = ({
   return (
     <>
       <PageSection>
-        <Title headingLevel="h1">{t('title')}</Title>
+        <Title headingLevel="h1" className="pf-v6-u-mb-sm">
+          {t('title')}
+        </Title>
         <Content component="p">{t('description')}</Content>
       </PageSection>
       {renderWorkspaceHeader && (
