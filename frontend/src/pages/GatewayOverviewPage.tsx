@@ -11,10 +11,6 @@ import {
   DataListItem,
   DataListItemCells,
   DataListItemRow,
-  DescriptionList,
-  DescriptionListDescription,
-  DescriptionListGroup,
-  DescriptionListTerm,
   ExpandableSection,
   Flex,
   FlexItem,
@@ -109,34 +105,40 @@ const countOf = (query: {
 }): number | undefined =>
   query.isError || !query.data ? undefined : query.data.length;
 
-type InventoryItem = {
+type CardRow = {
   label: string;
   value: string | number;
-  to: string;
+  // Where the value leads, where it leads anywhere. A count is a link to the
+  // page it was read from; a fact about the gateway is not.
+  to?: string;
   testId: string;
 };
 
-// One row of the inventory, after PatternFly's own dashboard inventory card:
-// what there is on the left, how many of it on the right, as a link to the
-// page the count was read from. A link whose text is a bare figure says
+// One row of a card's list, after PatternFly's own dashboard cards: what it
+// is on the left, what it says on the right, ruled off from the row below and
+// from the card's heading above. A link whose text is a bare figure says
 // nothing on its own, so it carries the name of what it counts as its label.
-const InventoryRow: React.FC<InventoryItem> = ({
-  label,
-  value,
-  to,
-  testId,
-}) => (
-  <DataListItem aria-labelledby={`${testId}-label`} data-testid={testId}>
+const CardListRow: React.FC<CardRow> = ({ label, value, to, testId }) => (
+  <DataListItem aria-labelledby={`${testId}-label`}>
     <DataListItemRow>
       <DataListItemCells
         dataListCells={[
           <DataListCell key="label" id={`${testId}-label`}>
             {label}
           </DataListCell>,
-          <DataListCell key="value" isFilled={false} alignRight>
-            <Link to={to} aria-label={`${label}: ${value}`}>
-              {value}
-            </Link>
+          <DataListCell
+            key="value"
+            isFilled={false}
+            alignRight
+            data-testid={testId}
+          >
+            {to ? (
+              <Link to={to} aria-label={`${label}: ${value}`}>
+                {value}
+              </Link>
+            ) : (
+              value
+            )}
           </DataListCell>,
         ]}
       />
@@ -217,7 +219,27 @@ const GatewayOverviewPage: React.FC = () => {
       : settings.data.settings.filter((entry) => entry.value !== undefined)
           .length;
 
-  const inventory: InventoryItem[] = [];
+  const details: CardRow[] = [
+    {
+      label: 'Gateway version',
+      value: info?.gatewayVersion || '-',
+      testId: 'gateway-version',
+    },
+    {
+      label: 'Dashboard version',
+      value: APP_VERSION,
+      testId: 'dashboard-version',
+    },
+    {
+      label: 'Compatibility',
+      value: compatibilityText(
+        compatibility.data?.compatibility ?? info?.compatibility,
+      ),
+      testId: 'gateway-compatibility',
+    },
+  ];
+
+  const inventory: CardRow[] = [];
   if (workspaceCount !== undefined) {
     inventory.push({
       label: 'Workspaces',
@@ -339,38 +361,16 @@ const GatewayOverviewPage: React.FC = () => {
           <GridItem lg={showInventory ? 5 : 8} md={12}>
             <Card isFullHeight data-testid="gateway-status-card">
               <CardTitle component="h2">Details</CardTitle>
-              <CardBody>
-                {/* Horizontal, so each value reads beside the thing it is the
-                    value of rather than under it. Fluid with it: PatternFly's
-                    horizontal term column is 12ch, which two of these four
-                    terms would wrap in. */}
-                <DescriptionList isHorizontal isFluid isCompact>
-                  {/* The gateway's health is in the masthead, on every page.
-                      Saying it again here, a scroll below itself, is the
-                      same fact twice. */}
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>Gateway version</DescriptionListTerm>
-                    <DescriptionListDescription data-testid="gateway-version">
-                      {info?.gatewayVersion || '-'}
-                    </DescriptionListDescription>
-                  </DescriptionListGroup>
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>Dashboard version</DescriptionListTerm>
-                    <DescriptionListDescription data-testid="dashboard-version">
-                      {APP_VERSION}
-                    </DescriptionListDescription>
-                  </DescriptionListGroup>
-                  <DescriptionListGroup>
-                    <DescriptionListTerm>Compatibility</DescriptionListTerm>
-                    <DescriptionListDescription data-testid="gateway-compatibility">
-                      {compatibilityText(
-                        compatibility.data?.compatibility ??
-                          info?.compatibility,
-                      )}
-                    </DescriptionListDescription>
-                  </DescriptionListGroup>
-                </DescriptionList>
-              </CardBody>
+              {/* The same list the inventory is, so the two cards of the row
+                  read as one thing said twice over rather than as two. The
+                  gateway's health is not among these: it is in the masthead,
+                  on every page, and saying it again a fold below itself is
+                  the same fact twice. */}
+              <DataList aria-label="Details" isCompact gridBreakpoint="none">
+                {details.map((item) => (
+                  <CardListRow key={item.testId} {...item} />
+                ))}
+              </DataList>
             </Card>
           </GridItem>
           {showInventory && (
@@ -390,7 +390,7 @@ const GatewayOverviewPage: React.FC = () => {
                   gridBreakpoint="none"
                 >
                   {inventory.map((item) => (
-                    <InventoryRow key={item.testId} {...item} />
+                    <CardListRow key={item.testId} {...item} />
                   ))}
                 </DataList>
               </Card>
