@@ -338,6 +338,7 @@ const GatewayOverviewPage: React.FC = () => {
         <Grid hasGutter>
           <GridItem lg={showInventory ? 5 : 8} md={12}>
             <Card isFullHeight data-testid="gateway-status-card">
+              <CardTitle component="h2">Details</CardTitle>
               <CardBody>
                 {/* Horizontal, so each value reads beside the thing it is the
                     value of rather than under it. Fluid with it: PatternFly's
