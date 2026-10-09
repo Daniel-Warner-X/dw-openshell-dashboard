@@ -343,9 +343,7 @@ const GatewayOverviewPage: React.FC = () => {
           Gateway
         </Title>
         <Content component="p">
-          The OpenShell gateway this dashboard is talking to: its health, what
-          is on it, and the compute drivers and extensions it negotiated at
-          start-up. Platform Admin only.
+          Admin view of status, inventory, and alerts for this gateway.
         </Content>
       </PageSection>
       <PageSection>
