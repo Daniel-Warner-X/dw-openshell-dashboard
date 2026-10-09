@@ -5,6 +5,7 @@ import {
   Card,
   CardBody,
   CardTitle,
+  Content,
   DescriptionList,
   DescriptionListDescription,
   DescriptionListGroup,
@@ -124,6 +125,11 @@ const GatewayOverviewPage: React.FC = () => {
     <>
       <PageSection>
         <Title headingLevel="h1">Gateway</Title>
+        <Content component="p">
+          The OpenShell gateway this dashboard is talking to: its health, the
+          release it runs, and the compute drivers and extensions it negotiated
+          at start-up. Platform Admin only.
+        </Content>
       </PageSection>
       <PageSection>
         <Gallery hasGutter minWidths={{ default: '260px' }}>
