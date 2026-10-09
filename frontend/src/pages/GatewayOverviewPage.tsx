@@ -13,11 +13,6 @@ import {
   DataListItem,
   DataListItemCells,
   DataListItemRow,
-  DescriptionList,
-  DescriptionListDescription,
-  DescriptionListGroup,
-  DescriptionListTerm,
-  Divider,
   Dropdown,
   DropdownItem,
   DropdownList,
@@ -601,7 +596,12 @@ const GatewayOverviewPage: React.FC = () => {
                     heading. It offers only the kinds that are waiting, so
                     choosing one can never empty the card. */}
                 <CardHeader
-                  className="pf-v6-u-align-items-flex-start"
+                  // The heading box is as tall as what is in it, and a
+                  // full-size control in it made this one taller than the
+                  // bare titles of the two cards beside it. A small toggle,
+                  // and the smaller padding a card title has under it,
+                  // bring the three headings back to one height.
+                  className="pf-v6-u-pb-md"
                   actions={{
                     hasNoOffset: true,
                     actions: (
@@ -616,6 +616,7 @@ const GatewayOverviewPage: React.FC = () => {
                           <MenuToggle
                             ref={toggleRef}
                             variant="plainText"
+                            size="sm"
                             isExpanded={isTypeOpen}
                             onClick={() => setTypeOpen(!isTypeOpen)}
                             data-testid="gateway-attention-type"
@@ -654,60 +655,102 @@ const GatewayOverviewPage: React.FC = () => {
                 >
                   <CardTitle component="h2">Needs attention</CardTitle>
                 </CardHeader>
-                {/* The heading in a box and a rule closing the list, the
-                    way the two cards beside this one are built. There the
-                    rules come from the list itself; a sentence under each
-                    line is not a row of a list, so here they are the
-                    card's own dividers and the lines between are left
-                    clear. Both run the card's full width, being children
-                    of the card rather than of its body, and the last is
-                    held a card's bottom padding clear of the 16px corner
-                    radius that would otherwise clip its ends. */}
-                <Divider />
-                <CardBody>
-                  <DescriptionList isCompact>
-                    {shownAttention.map((item) => (
-                      <DescriptionListGroup key={item.key}>
-                        <DescriptionListTerm
-                          icon={
-                            <Icon status={item.status}>
-                              {ATTENTION_ICON[item.status]}
-                            </Icon>
-                          }
-                        >
-                          <Link to={item.to}>{item.text}</Link>
-                        </DescriptionListTerm>
-                        <DescriptionListDescription>
-                          {item.detail}
-                        </DescriptionListDescription>
-                      </DescriptionListGroup>
-                    ))}
-                  </DescriptionList>
-                </CardBody>
-                <Divider className="pf-v6-u-mb-lg" />
+                {/* The same list the two cards beside this one are built
+                    from, so the three are ruled off the same way: under
+                    the heading, between the rows and below the last of
+                    them, each rule the full width of the card. A row here
+                    is two lines rather than two columns — what the thing
+                    is called, and a sentence saying what is wrong with
+                    it. The margin keeps the closing rule off the card's
+                    16px corner radius, which would clip its ends. */}
+                <DataList
+                  aria-label="Needs attention"
+                  isCompact
+                  gridBreakpoint="none"
+                  className="pf-v6-u-mb-lg"
+                >
+                  {shownAttention.map((item) => (
+                    <DataListItem
+                      key={item.key}
+                      aria-labelledby={`${item.key}-title`}
+                    >
+                      <DataListItemRow>
+                        <DataListItemCells
+                          dataListCells={[
+                            <DataListCell key="item">
+                              <Flex
+                                direction={{ default: 'column' }}
+                                gap={{ default: 'gapXs' }}
+                              >
+                                <FlexItem>
+                                  <Flex
+                                    gap={{ default: 'gapSm' }}
+                                    flexWrap={{ default: 'nowrap' }}
+                                    alignItems={{
+                                      default: 'alignItemsCenter',
+                                    }}
+                                  >
+                                    <FlexItem>
+                                      <Icon status={item.status}>
+                                        {ATTENTION_ICON[item.status]}
+                                      </Icon>
+                                    </FlexItem>
+                                    <FlexItem>
+                                      <Link
+                                        to={item.to}
+                                        id={`${item.key}-title`}
+                                      >
+                                        {item.text}
+                                      </Link>
+                                    </FlexItem>
+                                  </Flex>
+                                </FlexItem>
+                                <FlexItem>{item.detail}</FlexItem>
+                              </Flex>
+                            </DataListCell>,
+                          ]}
+                        />
+                      </DataListItemRow>
+                    </DataListItem>
+                  ))}
+                </DataList>
               </Card>
             ) : (
               // The same card, built the same way, so that the column does
               // not change shape when the last thing waiting is dealt with.
               <Card data-testid="gateway-all-clear">
                 <CardTitle component="h2">Needs attention</CardTitle>
-                <Divider />
-                <CardBody>
-                  <Flex
-                    alignItems={{ default: 'alignItemsCenter' }}
-                    gap={{ default: 'gapSm' }}
-                  >
-                    <FlexItem>
-                      <Icon status="success">
-                        <CheckCircleIcon />
-                      </Icon>
-                    </FlexItem>
-                    <FlexItem>
-                      <Content component="p">Nothing needs attention</Content>
-                    </FlexItem>
-                  </Flex>
-                </CardBody>
-                <Divider className="pf-v6-u-mb-lg" />
+                <DataList
+                  aria-label="Needs attention"
+                  isCompact
+                  gridBreakpoint="none"
+                  className="pf-v6-u-mb-lg"
+                >
+                  <DataListItem aria-labelledby="gateway-all-clear-label">
+                    <DataListItemRow>
+                      <DataListItemCells
+                        dataListCells={[
+                          <DataListCell key="all-clear">
+                            <Flex
+                              gap={{ default: 'gapSm' }}
+                              flexWrap={{ default: 'nowrap' }}
+                              alignItems={{ default: 'alignItemsCenter' }}
+                            >
+                              <FlexItem>
+                                <Icon status="success">
+                                  <CheckCircleIcon />
+                                </Icon>
+                              </FlexItem>
+                              <FlexItem id="gateway-all-clear-label">
+                                Nothing needs attention
+                              </FlexItem>
+                            </Flex>
+                          </DataListCell>,
+                        ]}
+                      />
+                    </DataListItemRow>
+                  </DataListItem>
+                </DataList>
               </Card>
             )}
           </GridItem>
