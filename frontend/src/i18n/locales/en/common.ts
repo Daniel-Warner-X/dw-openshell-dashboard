@@ -20,10 +20,11 @@ export default {
     actions: 'Header actions',
     themeToLight: 'Switch to light theme',
     themeToDark: 'Switch to dark theme',
+    // No longer used, and kept all the same — a locale is published API.
+    // The About modal retired into the Gateway page, which says everything
+    // it did, and the help menu went with the last item it had left.
     help: 'Help',
     documentation: 'Documentation',
-    // No longer used: the About modal retired into the Gateway page, which
-    // says everything it did. The key stays — a locale is published API.
     about: 'About',
     roleAdmin: 'Platform admin',
     roleUser: 'Standard user',

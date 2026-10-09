@@ -26,13 +26,7 @@ import {
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
-import {
-  BarsIcon,
-  ExternalLinkAltIcon,
-  MoonIcon,
-  QuestionCircleIcon,
-  SunIcon,
-} from '@patternfly/react-icons';
+import { BarsIcon, MoonIcon, SunIcon } from '@patternfly/react-icons';
 import { Link, useLocation } from 'react-router-dom';
 
 import openshellLogo from '~/assets/openshell-logo.svg';
@@ -51,10 +45,6 @@ import { useTheme } from './theme';
 type AppLayoutProps = {
   children: React.ReactNode;
 };
-
-// Where the dashboard's documentation lives. OpenShell has no docs site of
-// its own, so this is the project the gateway is part of.
-const DOCS_URL = 'https://github.com/NVIDIA/OpenShell';
 
 type NavGroupId = 'workspaces' | 'platform';
 
@@ -127,7 +117,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const user = useCurrentUser();
   const { isPlatformAdmin, isUser, isLoading: isRoleLoading } = useUserRole();
   const features = useFeatureFlags();
-  const [isHelpOpen, setHelpOpen] = useState(false);
   const [isUserOpen, setUserOpen] = useState(false);
   const [isIdentityOpen, setIdentityOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
@@ -194,43 +183,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
               </Button>
             </ToolbarItem>
-            <ToolbarItem>
-              <Dropdown
-                isOpen={isHelpOpen}
-                onSelect={() => setHelpOpen(false)}
-                onOpenChange={setHelpOpen}
-                toggle={(toggleRef) => (
-                  <MenuToggle
-                    ref={toggleRef}
-                    variant="plain"
-                    onClick={() => setHelpOpen(!isHelpOpen)}
-                    isExpanded={isHelpOpen}
-                    aria-label={t('header.help')}
-                    data-testid="help-menu"
-                  >
-                    <QuestionCircleIcon />
-                  </MenuToggle>
-                )}
-                popperProps={{ position: 'end' }}
-              >
-                <DropdownList>
-                  {/* What the About modal used to say — the dashboard
-                      version, the gateway's version and status, its compute
-                      driver — is the Gateway page, so the menu leads out to
-                      the documentation instead of repeating it. */}
-                  <DropdownItem
-                    key="documentation"
-                    to={DOCS_URL}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    icon={<ExternalLinkAltIcon />}
-                    data-testid="documentation-menu-item"
-                  >
-                    {t('header.documentation')}
-                  </DropdownItem>
-                </DropdownList>
-              </Dropdown>
-            </ToolbarItem>
             {!isRoleLoading && (isPlatformAdmin || isUser) && (
               <ToolbarItem alignSelf="center">
                 <RoleBadge
@@ -249,9 +201,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   <MenuToggle
                     ref={toggleRef}
                     // Without a variant PatternFly gives this a bordered
-                    // button, beside a status indicator, a theme toggle and a
-                    // help menu that are all plain. plainText keeps the
-                    // caret and drops the border.
+                    // button, beside a status indicator and a theme toggle
+                    // that are both plain. plainText keeps the caret and
+                    // drops the border.
                     variant="plainText"
                     onClick={() => setUserOpen(!isUserOpen)}
                     isExpanded={isUserOpen}
