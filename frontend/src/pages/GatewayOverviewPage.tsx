@@ -797,8 +797,15 @@ const GatewayOverviewPage: React.FC = () => {
               heading of its own rather than behind a fold. There are a
               handful of rows in each on any real gateway, and a count in a
               toggle that has to be opened to see what it counts asks for a
-              click to learn what the page could have said outright. */}
-          <GridItem span={12}>
+              click to learn what the page could have said outright.
+
+              Each is set off by the space the page puts between its
+              heading and the first row of cards: a page section's bottom
+              padding and the next one's top padding, both a medium spacer,
+              which is the grid's own gutter over again. So one more of the
+              same on top of the gutter, and a full-width card reads as the
+              start of a band rather than as another card of the row. */}
+          <GridItem span={12} className="pf-v6-u-mt-md">
             <Card data-testid="gateway-drivers-card">
               <CardTitle component="h2">
                 {`Compute drivers (${(info?.computeDrivers ?? []).length})`}
@@ -832,7 +839,7 @@ const GatewayOverviewPage: React.FC = () => {
               </CardBody>
             </Card>
           </GridItem>
-          <GridItem span={12}>
+          <GridItem span={12} className="pf-v6-u-mt-md">
             <Card data-testid="gateway-extensions-card">
               <CardTitle component="h2">
                 {`Extensions (${extensions.length})`}
