@@ -279,6 +279,10 @@ const GatewayOverviewPage: React.FC = () => {
   // a gateway starts with `default`, so one that has only workspaces has
   // still not been used for anything.
   const isEmpty = sandboxCount === 0 && providerCount === 0;
+  // An empty gateway is walked through getting started instead of counted,
+  // and a user the gateway refuses the cross-workspace lists to has nothing
+  // to count. Either way the top row is two columns, not three.
+  const showInventory = !isEmpty && inventory.length > 0;
 
   const erroredSandboxes = (sandboxes.data ?? []).filter(
     (sandbox) => sandbox.status.phase === 'ERROR',
@@ -329,10 +333,10 @@ const GatewayOverviewPage: React.FC = () => {
       <PageSection>
         {/* One grid for the whole page, so the blocks are separated by a
             gutter rather than by a page section's padding each. The top row
-            pairs the two questions that are asked on arrival — is the gateway
-            well, and is anything waiting — side by side. */}
+            answers, left to right, the questions that are asked on arrival:
+            is the gateway well, what is on it, and is anything waiting. */}
         <Grid hasGutter>
-          <GridItem lg={8}>
+          <GridItem lg={showInventory ? 5 : 8} md={12}>
             <Card isFullHeight data-testid="gateway-status-card">
               <CardBody>
                 {/* Horizontal, so each value reads beside the thing it is the
@@ -368,9 +372,32 @@ const GatewayOverviewPage: React.FC = () => {
               </CardBody>
             </Card>
           </GridItem>
-          {/* The column beside the health card either carries what is waiting
-              or says that nothing is, so the row is whole either way. */}
-          <GridItem lg={4}>
+          {showInventory && (
+            <GridItem lg={3} md={6}>
+              <Card isFullHeight data-testid="gateway-counts">
+                <CardTitle component="h2">Inventory</CardTitle>
+                {/* Rows rather than tiles, after PatternFly's own dashboard
+                    inventory card. The list is a direct child of the card and
+                    not of a body, so each rule runs the card's full width
+                    instead of stopping short of its padding. A column rather
+                    than a band across the page: a figure right-aligned at the
+                    far edge of a full-width card is a long way from the name
+                    of what it counts. */}
+                <DataList
+                  aria-label="Inventory"
+                  isCompact
+                  gridBreakpoint="none"
+                >
+                  {inventory.map((item) => (
+                    <InventoryRow key={item.testId} {...item} />
+                  ))}
+                </DataList>
+              </Card>
+            </GridItem>
+          )}
+          {/* The last column either carries what is waiting or says that
+              nothing is, so the row is whole either way. */}
+          <GridItem lg={4} md={6}>
             {attention.length > 0 ? (
               <Alert
                 variant="warning"
@@ -407,7 +434,7 @@ const GatewayOverviewPage: React.FC = () => {
               </Card>
             )}
           </GridItem>
-          {isEmpty ? (
+          {isEmpty && (
             <GridItem span={12}>
               <Card data-testid="gateway-get-started">
                 <CardTitle>Get started</CardTitle>
@@ -446,27 +473,6 @@ const GatewayOverviewPage: React.FC = () => {
                 </CardBody>
               </Card>
             </GridItem>
-          ) : (
-            inventory.length > 0 && (
-              <GridItem span={12}>
-                <Card data-testid="gateway-counts">
-                  <CardTitle component="h2">Inventory</CardTitle>
-                  {/* Rows rather than tiles, after PatternFly's own dashboard
-                      inventory card. The list is a direct child of the card
-                      and not of a body, so each rule runs the card's full
-                      width instead of stopping short of its padding. */}
-                  <DataList
-                    aria-label="Inventory"
-                    isCompact
-                    gridBreakpoint="none"
-                  >
-                    {inventory.map((item) => (
-                      <InventoryRow key={item.testId} {...item} />
-                    ))}
-                  </DataList>
-                </Card>
-              </GridItem>
-            )
           )}
           <GridItem span={12}>
             <ExpandableSection
