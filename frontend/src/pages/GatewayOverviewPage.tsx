@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import {
   Alert,
   Bullseye,
   Button,
   Card,
   CardBody,
+  CardHeader,
   CardTitle,
   Content,
   DataList,
@@ -15,6 +17,9 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
   ExpandableSection,
   Flex,
   FlexItem,
@@ -23,6 +28,7 @@ import {
   Icon,
   Label,
   LabelGroup,
+  MenuToggle,
   PageSection,
   ProgressStep,
   ProgressStepper,
@@ -50,7 +56,11 @@ import { useGlobalPolicy } from '../api/policy';
 import { useGlobalSettings } from '../api/settings';
 import { useWorkspaces } from '../api/workspaces';
 import { APP_VERSION } from '../constants';
-import type { GatewayCompatibility, GatewayExtensionKind } from '../types';
+import type {
+  DraftSandboxSummary,
+  GatewayCompatibility,
+  GatewayExtensionKind,
+} from '../types';
 
 // The BFF's verdict on the gateway, in a few words. The notice that explains
 // what an unsupported gateway does to the rest of the dashboard is the one
@@ -120,6 +130,65 @@ const ATTENTION_ICON = {
   warning: <ExclamationTriangleIcon />,
 } as const;
 
+// The three kinds of thing that can be waiting, which are also what the
+// card's filter offers. A kind with nothing in it is not offered.
+const ATTENTION_TYPES = ['proposals', 'errors', 'setup'] as const;
+
+type AttentionType = (typeof ATTENTION_TYPES)[number];
+
+const ATTENTION_TYPE_LABEL: Record<AttentionType, string> = {
+  proposals: 'Proposals',
+  errors: 'Sandbox errors',
+  setup: 'Setup',
+};
+
+// One line of Needs attention: the thing it is about, named, and a sentence
+// saying what is wrong with it.
+type AttentionItem = {
+  key: string;
+  type: AttentionType;
+  status: 'warning' | 'danger';
+  // The name of the thing, which is the link. A sandbox is named rather than
+  // counted: "3 sandboxes in error" is not something anybody can act on
+  // without first finding out which three.
+  text: string;
+  detail: string;
+  to: string;
+};
+
+// How many of one kind are named before the rest become a line of their own.
+// A gateway with forty sandboxes in error would otherwise be a column forty
+// rows long on the page that is meant to be read first.
+const ATTENTION_PER_TYPE = 4;
+
+// Caps one kind of item, naming what it left out rather than dropping it
+// quietly. `overflow` is the line that stands for the rest.
+const cappedByType = (
+  items: AttentionItem[],
+  overflow: (hidden: number) => AttentionItem,
+): AttentionItem[] =>
+  items.length > ATTENTION_PER_TYPE
+    ? [
+        ...items.slice(0, ATTENTION_PER_TYPE),
+        overflow(items.length - ATTENTION_PER_TYPE),
+      ]
+    : items;
+
+// A sandbox whose proposal inbox could not be read comes first: nothing is
+// known about it, which is worth more than a known count. Then the ones the
+// prover flagged, then the most recently proposed. The same order the
+// Proposals page puts them in.
+const byProposalUrgency = (a: DraftSandboxSummary, b: DraftSandboxSummary) => {
+  if (!!a.unavailable !== !!b.unavailable) return a.unavailable ? -1 : 1;
+  if (a.hasSecurityFlags !== b.hasSecurityFlags) {
+    return a.hasSecurityFlags ? -1 : 1;
+  }
+  return b.latestDraftMs - a.latestDraftMs;
+};
+
+const sandboxPath = (workspace: string, name: string, tab: string) =>
+  `/workspaces/${encodeURIComponent(workspace)}/sandboxes/${encodeURIComponent(name)}?tab=${tab}`;
+
 type CardRow = {
   label: string;
   value: string | number;
@@ -181,6 +250,12 @@ const GatewayOverviewPage: React.FC = () => {
   // The same query the shell's Proposals badge reads, so this costs the
   // gateway nothing beyond what the badge already asks for.
   const proposals = useAllWorkspacesDraftSummary(features.draftPolicy);
+  // Which kind of thing Needs attention is showing. Every hook runs before
+  // the early returns below, so this one does too.
+  const [attentionType, setAttentionType] = useState<AttentionType | 'all'>(
+    'all',
+  );
+  const [isTypeOpen, setTypeOpen] = useState(false);
 
   if (gateway.isLoading) {
     return (
@@ -333,18 +408,48 @@ const GatewayOverviewPage: React.FC = () => {
   // title that is the link, then a sentence under it saying what the title
   // means and what is to be done about it. The headline alone is a count
   // without a consequence, which is what the old bulleted alert was.
-  const attention: {
-    key: string;
-    status: 'warning' | 'danger';
-    text: string;
-    detail: string;
-    to: string;
-  }[] = [];
+  const attention: AttentionItem[] = [];
   // First: a rule an agent proposed is a sandbox held up until somebody
-  // decides on it.
-  if (proposals.totalPending > 0) {
+  // decides on it. One line per sandbox, named, because approving is done in
+  // that sandbox's own inbox and nowhere else (hard fact 25) — a line that
+  // only counted them led to a page that counts them again.
+  const pendingSandboxes = [...proposals.items]
+    .filter((entry) => entry.unavailable || entry.pendingCount > 0)
+    .sort(byProposalUrgency);
+  attention.push(
+    ...cappedByType(
+      pendingSandboxes.map((entry) => ({
+        key: `proposals-${entry.workspace}/${entry.sandboxName}`,
+        type: 'proposals' as const,
+        status: entry.hasSecurityFlags
+          ? ('danger' as const)
+          : ('warning' as const),
+        text: entry.sandboxName,
+        detail: entry.unavailable
+          ? `Its proposal inbox in ${entry.workspace} could not be read, so what is waiting in it is not known.`
+          : `${entry.pendingCount} policy ${
+              entry.pendingCount === 1 ? 'rule' : 'rules'
+            } waiting for a decision in ${entry.workspace}${
+              entry.hasSecurityFlags ? ', flagged by the prover' : ''
+            }.`,
+        to: sandboxPath(entry.workspace, entry.sandboxName, 'proposals'),
+      })),
+      (hidden) => ({
+        key: 'proposals-more',
+        type: 'proposals' as const,
+        status: 'warning' as const,
+        text: `${hidden} more ${hidden === 1 ? 'sandbox' : 'sandboxes'} with proposals`,
+        detail: 'Every sandbox with a rule waiting is on the Proposals page.',
+        to: '/proposals',
+      }),
+    ),
+  );
+  // A summary that carries a total but no sandboxes is still worth saying;
+  // all it can do is lead to the page that lists them.
+  if (pendingSandboxes.length === 0 && proposals.totalPending > 0) {
     attention.push({
       key: 'proposals',
+      type: 'proposals',
       status: 'warning',
       text: `${proposals.totalPending} policy ${
         proposals.totalPending === 1 ? 'rule' : 'rules'
@@ -355,22 +460,39 @@ const GatewayOverviewPage: React.FC = () => {
       to: '/proposals',
     });
   }
-  if (erroredSandboxes.length > 0) {
-    attention.push({
-      key: 'errored',
-      status: 'danger',
-      text: `${erroredSandboxes.length} sandbox${
-        erroredSandboxes.length === 1 ? '' : 'es'
-      } in error`,
-      detail: `Provisioning failed, or the main process exited non-zero. The sandbox ${
-        erroredSandboxes.length === 1 ? 'log says' : 'logs say'
-      } which.`,
-      to: '/all-workspaces',
-    });
-  }
+  attention.push(
+    ...cappedByType(
+      erroredSandboxes.map((sandbox) => ({
+        key: `errored-${sandbox.metadata.workspace}/${sandbox.metadata.name}`,
+        type: 'errors' as const,
+        status: 'danger' as const,
+        text: sandbox.metadata.name,
+        // Where the sandbox is, and the two things ERROR can mean: the
+        // gateway could not provision it, or its main process exited
+        // non-zero (hard fact 1). Only the log says which.
+        detail: `In ${
+          sandbox.metadata.workspace || 'an unnamed workspace'
+        }. Provisioning failed, or the main process exited non-zero; the log says which.`,
+        to: sandboxPath(
+          sandbox.metadata.workspace ?? '',
+          sandbox.metadata.name,
+          'logs',
+        ),
+      })),
+      (hidden) => ({
+        key: 'errored-more',
+        type: 'errors' as const,
+        status: 'danger' as const,
+        text: `${hidden} more ${hidden === 1 ? 'sandbox' : 'sandboxes'} in error`,
+        detail: 'Every sandbox on the gateway is under All resources.',
+        to: '/all-workspaces',
+      }),
+    ),
+  );
   if (!isEmpty && providerCount === 0) {
     attention.push({
       key: 'no-providers',
+      type: 'setup',
       status: 'warning',
       text: 'No providers',
       detail:
@@ -378,6 +500,19 @@ const GatewayOverviewPage: React.FC = () => {
       to: '/all-workspaces',
     });
   }
+  // The kinds that are actually waiting, in the order the card lists them.
+  const attentionTypes = ATTENTION_TYPES.filter((type) =>
+    attention.some((item) => item.type === type),
+  );
+  // A filter held across a refresh can outlive the last item of its kind.
+  const activeType =
+    attentionType !== 'all' && attentionTypes.includes(attentionType)
+      ? attentionType
+      : 'all';
+  const shownAttention =
+    activeType === 'all'
+      ? attention
+      : attention.filter((item) => item.type === activeType);
 
   return (
     <>
@@ -459,10 +594,68 @@ const GatewayOverviewPage: React.FC = () => {
               // column at a page that is read before anything has gone
               // wrong; the colour belongs on the one line it is about.
               <Card data-testid="gateway-attention">
-                <CardTitle component="h2">Needs attention</CardTitle>
+                {/* The filter sits across from the heading, where the
+                    PatternFly dashboard card puts it: plain text with a
+                    caret, not a bordered control competing with the
+                    heading. It offers only the kinds that are waiting, so
+                    choosing one can never empty the card. */}
+                <CardHeader
+                  className="pf-v6-u-align-items-flex-start"
+                  actions={{
+                    hasNoOffset: true,
+                    actions: (
+                      <Dropdown
+                        isOpen={isTypeOpen}
+                        onOpenChange={setTypeOpen}
+                        onSelect={(_event, value) => {
+                          setAttentionType(value as AttentionType | 'all');
+                          setTypeOpen(false);
+                        }}
+                        toggle={(toggleRef) => (
+                          <MenuToggle
+                            ref={toggleRef}
+                            variant="plainText"
+                            isExpanded={isTypeOpen}
+                            onClick={() => setTypeOpen(!isTypeOpen)}
+                            data-testid="gateway-attention-type"
+                          >
+                            {activeType === 'all'
+                              ? 'All types'
+                              : ATTENTION_TYPE_LABEL[activeType]}
+                          </MenuToggle>
+                        )}
+                        popperProps={{ position: 'end' }}
+                      >
+                        <DropdownList>
+                          <DropdownItem
+                            key="all"
+                            value="all"
+                            isSelected={activeType === 'all'}
+                          >
+                            {`All types (${attention.length})`}
+                          </DropdownItem>
+                          {attentionTypes.map((type) => (
+                            <DropdownItem
+                              key={type}
+                              value={type}
+                              isSelected={activeType === type}
+                            >
+                              {`${ATTENTION_TYPE_LABEL[type]} (${
+                                attention.filter((item) => item.type === type)
+                                  .length
+                              })`}
+                            </DropdownItem>
+                          ))}
+                        </DropdownList>
+                      </Dropdown>
+                    ),
+                  }}
+                >
+                  <CardTitle component="h2">Needs attention</CardTitle>
+                </CardHeader>
                 <CardBody>
                   <DescriptionList isCompact>
-                    {attention.map((item) => (
+                    {shownAttention.map((item) => (
                       <DescriptionListGroup key={item.key}>
                         <DescriptionListTerm
                           icon={

@@ -271,10 +271,14 @@ describe('GatewayOverviewPage', () => {
     renderPage();
 
     const attention = within(screen.getAllByTestId('gateway-attention')[0]);
-    expect(attention.getByText('1 sandbox in error')).toHaveAttribute(
+    // The sandbox in error is named and leads to its own log, which is the
+    // only thing that says why it is in error. A count would have led to a
+    // list the reader then has to search.
+    expect(attention.getByText('builder')).toHaveAttribute(
       'href',
-      '/all-workspaces',
+      '/workspaces/team-a/sandboxes/builder?tab=logs',
     );
+    expect(attention.getByText(/Provisioning failed/)).toBeInTheDocument();
     expect(
       attention.getByText(/^No providers/, { selector: 'a' }),
     ).toBeInTheDocument();
@@ -284,8 +288,61 @@ describe('GatewayOverviewPage', () => {
   });
 
   // A rule an agent proposed is a sandbox held up until somebody decides on
-  // it, so it leads the list, and it leads to the page where that is done.
-  it('leads with the rules waiting for a decision', () => {
+  // it, so it leads the list, and each one leads to the inbox where that
+  // decision is made — approving binds a chunk to the review token of the
+  // reviewer's own last read of it (hard fact 25).
+  it('names every sandbox with rules waiting, ahead of the errors', () => {
+    mockUseGatewayInfo.mockReturnValue(
+      answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
+    );
+    mockUseDraftSummary.mockReturnValue({
+      ...answered(undefined),
+      items: [
+        {
+          workspace: 'team-a',
+          sandboxName: 'quiet',
+          pendingCount: 1,
+          hasSecurityFlags: false,
+          latestDraftMs: 10,
+        },
+        {
+          workspace: 'team-b',
+          sandboxName: 'flagged',
+          pendingCount: 2,
+          hasSecurityFlags: true,
+          latestDraftMs: 5,
+        },
+      ],
+      totalPending: 3,
+    });
+    mockUseAllSandboxes.mockReturnValue(
+      answered([sandbox('agent', 'READY'), sandbox('builder', 'ERROR')]),
+    );
+    renderPage();
+
+    const card = within(screen.getByTestId('gateway-attention'));
+    const rows = card.getAllByRole('link');
+    // The one the prover flagged leads, whatever its age.
+    expect(rows[0]).toHaveTextContent('flagged');
+    expect(rows[0]).toHaveAttribute(
+      'href',
+      '/workspaces/team-b/sandboxes/flagged?tab=proposals',
+    );
+    expect(rows[1]).toHaveTextContent('quiet');
+    expect(rows[2]).toHaveTextContent('builder');
+    expect(
+      card.getByText(
+        '2 policy rules waiting for a decision in team-b, flagged by the prover.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      card.getByText('1 policy rule waiting for a decision in team-a.'),
+    ).toBeInTheDocument();
+  });
+
+  // A summary that carries a total but no sandboxes still says so, and all
+  // it can do is lead to the page that lists them.
+  it('falls back to the total when no sandbox is named', () => {
     mockUseGatewayInfo.mockReturnValue(
       answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
     );
@@ -294,9 +351,6 @@ describe('GatewayOverviewPage', () => {
       items: [],
       totalPending: 3,
     });
-    mockUseAllSandboxes.mockReturnValue(
-      answered([sandbox('agent', 'READY'), sandbox('builder', 'ERROR')]),
-    );
     renderPage();
 
     const rows = within(screen.getByTestId('gateway-attention')).getAllByRole(
@@ -304,7 +358,34 @@ describe('GatewayOverviewPage', () => {
     );
     expect(rows[0]).toHaveTextContent('3 policy rules waiting for a decision');
     expect(rows[0]).toHaveAttribute('href', '/proposals');
-    expect(rows[1]).toHaveTextContent('1 sandbox in error');
+  });
+
+  // Only the kinds that are waiting are offered, and choosing one leaves the
+  // other kinds' lines out.
+  it('filters the card by the kind of thing waiting', () => {
+    mockUseGatewayInfo.mockReturnValue(
+      answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
+    );
+    mockUseAllSandboxes.mockReturnValue(
+      answered([sandbox('agent', 'READY'), sandbox('builder', 'ERROR')]),
+    );
+    mockUseAllProviders.mockReturnValue(answered([]));
+    renderPage();
+
+    const card = within(screen.getByTestId('gateway-attention'));
+    expect(card.getByTestId('gateway-attention-type')).toHaveTextContent(
+      'All types',
+    );
+    // The menu itself is a popper, outside the card.
+    fireEvent.click(card.getByTestId('gateway-attention-type'));
+    const menu = within(screen.getByRole('menu'));
+    // Nothing is proposed, so Proposals is not offered.
+    expect(menu.queryByText(/^Proposals/)).not.toBeInTheDocument();
+    expect(menu.getByText('All types (2)')).toBeInTheDocument();
+    fireEvent.click(menu.getByText('Sandbox errors (1)'));
+
+    expect(card.getByText('builder')).toBeInTheDocument();
+    expect(card.queryByText(/^No providers/)).not.toBeInTheDocument();
   });
 
   it('displays compute drivers table', () => {
