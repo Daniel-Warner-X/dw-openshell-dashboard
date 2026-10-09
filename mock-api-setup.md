@@ -27,6 +27,16 @@ Then open **http://localhost:3000** and click "Continue as developer."
 
 No BFF or gateway needed. The mock plugin runs as Vite middleware *before* the existing `/api` proxy, so when `MOCK_API` is unset, the proxy to the real BFF on `:8080` still works exactly as before.
 
+Both are also `make` targets: `make dev-mock`, and `make dev-mock-empty` for the mode below.
+
+### Empty-gateway mode
+
+```bash
+cd frontend && MOCK_API=true MOCK_EMPTY=true npm start
+```
+
+Every list answers empty and only the `default` workspace a gateway starts with is returned. That is the one state the full fixtures cannot reach, and it is what the Gateway page's get-started walkthrough — which stands in for the count tiles — is shown for.
+
 ## Mock data coverage
 
 - **Auth**: dev-mode config + platform admin user with `['admin', 'user']` roles

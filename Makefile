@@ -2,7 +2,7 @@
 -include scripts/.env.dev
 export OPENSHELL_DIR OPENSHELL_GATEWAY_URL GATEWAY_CA_CERT OIDC_ISSUER OIDC_CLIENT_ID
 
-.PHONY: setup dev dev-full dev-mock dev-backend dev-frontend build build-frontend build-backend test lint lint-go typecheck format format-check clean
+.PHONY: setup dev dev-full dev-mock dev-mock-empty dev-backend dev-frontend build build-frontend build-backend test lint lint-go typecheck format format-check clean
 
 setup: ## Install frontend deps and Go deps
 	cd frontend && npm install
@@ -20,6 +20,12 @@ dev: ## Start frontend dev server (:3000) and Go BFF (:8080)
 # See mock-api-setup.md for what the fixtures cover.
 dev-mock: ## Start the frontend only (:3000), served from mock API data
 	cd frontend && MOCK_API=true npm start
+
+# The same fixtures, emptied: the one `default` workspace a gateway starts
+# with and nothing in it. This is how the Gateway page's get-started
+# walkthrough, which stands in for the counts, is reached.
+dev-mock-empty: ## Start the frontend only (:3000), as a gateway nobody has used yet
+	cd frontend && MOCK_API=true MOCK_EMPTY=true npm start
 
 # The gateway range this checkout supports, for the BFF's compatibility notice.
 # It is DERIVED from the lanes CI requires in deploy/ci/gateway-pins.json —

@@ -2,18 +2,27 @@ export default {
   nav: {
     gateway: 'Gateway',
     workspaces: 'Workspaces',
-    allWorkspaces: 'All workspaces',
+    // The page lists sandboxes, providers, templates and services across
+    // every workspace — resources, not workspaces, which is the question
+    // "what is the difference between Workspaces and All workspaces?" that
+    // the old label invited.
+    allWorkspaces: 'All resources',
     providerProfiles: 'Provider profiles',
     globalPolicy: 'Global policy',
     settings: 'Settings',
     primary: 'Primary navigation',
     global: 'Global navigation',
+    groupWorkspaces: 'Workspaces',
+    groupPlatform: 'Platform',
   },
   header: {
     actions: 'Header actions',
     themeToLight: 'Switch to light theme',
     themeToDark: 'Switch to dark theme',
     help: 'Help',
+    documentation: 'Documentation',
+    // No longer used: the About modal retired into the Gateway page, which
+    // says everything it did. The key stays — a locale is published API.
     about: 'About',
     roleAdmin: 'Platform admin',
     roleUser: 'Standard user',
@@ -32,6 +41,10 @@ export default {
     none: 'None',
     close: 'Close',
   },
+  // Only brandAlt is still shown, on the masthead logo. The rest belonged to
+  // the About modal, which retired into the Gateway page. The keys stay: a
+  // locale is published API (ADR 0004), and a consumer may have overridden
+  // them.
   about: {
     productName: 'OpenShell Dashboard',
     trademark: 'Apache-2.0 license.',

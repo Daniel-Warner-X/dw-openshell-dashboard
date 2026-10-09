@@ -86,14 +86,14 @@ describe('AppLayout navigation', () => {
 
   // The lists across workspaces are answered for platform admins only, so
   // nobody else is shown the way to them.
-  it('offers All workspaces to a platform admin, after Workspaces', () => {
+  it('offers All resources to a platform admin, after Workspaces', () => {
     mockIsPlatformAdmin = true;
     renderShell('/workspaces');
 
     expect(navLinks()).toEqual([
       ['Gateway', '/gateway'],
       ['Workspaces', '/workspaces'],
-      ['All workspaces', '/all-workspaces'],
+      ['All resources', '/all-workspaces'],
       ['Provider profiles', '/provider-profiles'],
       ['Global policy', '/global-policy'],
       ['Settings', '/settings'],
@@ -106,10 +106,32 @@ describe('AppLayout navigation', () => {
     expect(navLinks()).toEqual([['Workspaces', '/workspaces']]);
   });
 
+  // Gateway leads, ungrouped: the landing page is not one of a set.
+  it('groups the entries a platform admin sees', () => {
+    mockIsPlatformAdmin = true;
+    renderShell('/gateway');
+
+    expect(primaryNav().getByText('Workspaces', { selector: 'h2' }));
+    expect(primaryNav().getByText('Platform', { selector: 'h2' }));
+  });
+
+  // One heading above the only section there is names the sidebar, which the
+  // sidebar already is. A standard user keeps the flat list they had.
+  it('leaves the nav flat and unheaded for a standard user', () => {
+    renderShell('/workspaces');
+
+    expect(
+      primaryNav().queryByText('Workspaces', { selector: 'h2' }),
+    ).not.toBeInTheDocument();
+    expect(
+      primaryNav().queryByText('Platform', { selector: 'h2' }),
+    ).not.toBeInTheDocument();
+  });
+
   // The two entries share a word, not a path prefix: each is current only on
   // its own pages.
   it.each([
-    ['/all-workspaces', 'All workspaces'],
+    ['/all-workspaces', 'All resources'],
     ['/workspaces', 'Workspaces'],
     ['/workspaces/team-a/sandboxes/agent', 'Workspaces'],
   ])('marks the right entry as current on %s', (route, entry) => {

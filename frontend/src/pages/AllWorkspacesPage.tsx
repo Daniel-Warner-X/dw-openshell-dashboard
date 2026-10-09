@@ -232,7 +232,7 @@ const AllWorkspacesPage: React.FC<AllWorkspacesPageProps> = ({
   return (
     <>
       <PageSection>
-        <Title headingLevel="h1">All workspaces</Title>
+        <Title headingLevel="h1">All resources</Title>
         <Content component="p">
           Sandboxes, providers, templates and services across every workspace on
           the gateway. Select a row to open it in its workspace.

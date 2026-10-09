@@ -90,6 +90,22 @@ const renderShell = (route: string, page: React.ReactNode) =>
     </MemoryRouter>,
   );
 
+// An entry of the sidebar, by its label. A link and not its text: a section
+// heading carries the same words as the entries it groups ("Workspaces"), and
+// jsdom has no width, so the collapsed sidebar is out of the accessibility
+// tree.
+const navLink = (name: string) =>
+  within(screen.getByLabelText('Primary navigation')).getByRole('link', {
+    name,
+    hidden: true,
+  });
+
+const missingNavLink = (name: string) =>
+  within(screen.getByLabelText('Primary navigation')).queryByRole('link', {
+    name,
+    hidden: true,
+  });
+
 // A page as every routed page starts: its own level 1 heading.
 const page = (
   <div data-testid="routed-page">
@@ -155,22 +171,20 @@ describe('AppLayout platform-admin gating', () => {
   it('hides Gateway, Global policy, and Settings nav for a User', () => {
     renderShell('/workspaces', page);
 
-    const nav = screen.getByLabelText('Primary navigation');
-    expect(within(nav).getByText('Workspaces')).toBeInTheDocument();
-    expect(within(nav).queryByText('Gateway')).not.toBeInTheDocument();
-    expect(within(nav).queryByText('Global policy')).not.toBeInTheDocument();
-    expect(within(nav).queryByText('Settings')).not.toBeInTheDocument();
+    expect(navLink('Workspaces')).toBeInTheDocument();
+    expect(missingNavLink('Gateway')).not.toBeInTheDocument();
+    expect(missingNavLink('Global policy')).not.toBeInTheDocument();
+    expect(missingNavLink('Settings')).not.toBeInTheDocument();
   });
 
   it('shows Gateway, Global policy, and Settings nav for a Platform Admin', () => {
     mockUser({ roles: ['admin'] });
     renderShell('/workspaces', page);
 
-    const nav = screen.getByLabelText('Primary navigation');
-    expect(within(nav).getByText('Gateway')).toBeInTheDocument();
-    expect(within(nav).getByText('Workspaces')).toBeInTheDocument();
-    expect(within(nav).getByText('Global policy')).toBeInTheDocument();
-    expect(within(nav).getByText('Settings')).toBeInTheDocument();
+    expect(navLink('Gateway')).toBeInTheDocument();
+    expect(navLink('Workspaces')).toBeInTheDocument();
+    expect(navLink('Global policy')).toBeInTheDocument();
+    expect(navLink('Settings')).toBeInTheDocument();
   });
 
   it('points the logo home at /workspaces for a User', () => {
@@ -221,8 +235,9 @@ describe('AppLayout gateway compatibility notice', () => {
     mockVerdict('0.0.116', { status: 'unsupported', ...range });
     renderShell('/workspaces', page);
 
-    // The shell did ask for gateway info, and got nothing...
-    expect(mockUseGatewayInfo).toHaveBeenCalled();
+    // The verdict rides on its own request, which the gateway answers for
+    // every signed-in user: the shell never asks for gateway info...
+    expect(mockUseGatewayInfo).not.toHaveBeenCalled();
     // ...and the notice is there anyway, naming the version.
     expect(screen.getByTestId('gateway-compatibility-alert')).toHaveTextContent(
       'The gateway reports version 0.0.116.',

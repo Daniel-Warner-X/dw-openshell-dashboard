@@ -10,6 +10,15 @@ type RouteHandler = (
   query: URLSearchParams,
 ) => unknown;
 
+// MOCK_EMPTY=true serves a gateway nobody has used yet: the one `default`
+// workspace it starts with, and nothing in it. That is what the Gateway
+// page's get-started walkthrough stands in for, and it cannot be reached
+// from the ordinary fixtures, which are deliberately full.
+const isEmptyGateway = process.env.MOCK_EMPTY === 'true';
+
+// A list as the gateway would answer it in whichever mode is running.
+const orEmpty = <T>(items: T[]): T[] => (isEmptyGateway ? [] : items);
+
 // Route patterns: :param captures a path segment.
 const routes: [string, RouteHandler][] = [
   // Auth
@@ -21,17 +30,18 @@ const routes: [string, RouteHandler][] = [
   ['GET /api/v1/gateway/compatibility', () => data.gatewayCompatibility],
 
   // Workspaces
-  ['GET /api/v1/workspaces', () => data.workspaces],
+  ['GET /api/v1/workspaces', () =>
+    isEmptyGateway ? data.workspaces.slice(0, 1) : data.workspaces],
   ['GET /api/v1/workspaces/:workspace', ({ workspace }) =>
     data.workspaceDetail[workspace] ?? null],
 
   // Members
   ['GET /api/v1/workspaces/:workspace/members', ({ workspace }) =>
-    data.members[workspace] ?? []],
+    orEmpty(data.members[workspace] ?? [])],
 
   // Providers (workspace scope)
   ['GET /api/v1/workspaces/:workspace/providers', ({ workspace }) =>
-    data.providers[workspace] ?? []],
+    orEmpty(data.providers[workspace] ?? [])],
   ['GET /api/v1/workspaces/:workspace/providers/:provider', ({ workspace, provider }) => {
     const list = data.providers[workspace] ?? [];
     return (list as any[]).find((p) => p.metadata.name === provider) ?? null;
@@ -40,7 +50,7 @@ const routes: [string, RouteHandler][] = [
     data.refreshStatus[provider] ?? []],
 
   // Providers (all workspaces)
-  ['GET /api/v1/providers', () => data.allProviders],
+  ['GET /api/v1/providers', () => orEmpty(data.allProviders)],
 
   // Provider profiles (platform)
   ['GET /api/v1/provider-profiles', () => data.platformProfiles],
@@ -49,7 +59,7 @@ const routes: [string, RouteHandler][] = [
 
   // Sandboxes (workspace scope)
   ['GET /api/v1/workspaces/:workspace/sandboxes', ({ workspace }) =>
-    data.sandboxes[workspace] ?? []],
+    orEmpty(data.sandboxes[workspace] ?? [])],
   ['GET /api/v1/workspaces/:workspace/sandboxes/:sandbox', ({ workspace, sandbox }) => {
     const list = data.sandboxes[workspace] ?? [];
     return (list as any[]).find((s) => s.metadata.name === sandbox) ?? null;
@@ -95,24 +105,24 @@ const routes: [string, RouteHandler][] = [
 
   // Templates (workspace scope)
   ['GET /api/v1/workspaces/:workspace/templates', ({ workspace }) =>
-    data.templates[workspace] ?? []],
+    orEmpty(data.templates[workspace] ?? [])],
   ['GET /api/v1/workspaces/:workspace/templates/:template', ({ workspace, template }) => {
     const list = data.templates[workspace] ?? [];
     return (list as any[]).find((t) => t.metadata.name === template) ?? null;
   }],
 
   // Templates (all workspaces)
-  ['GET /api/v1/templates', () => data.allTemplates],
+  ['GET /api/v1/templates', () => orEmpty(data.allTemplates)],
 
   // Services (workspace scope)
   ['GET /api/v1/workspaces/:workspace/services', ({ workspace }) =>
-    data.services[workspace] ?? []],
+    orEmpty(data.services[workspace] ?? [])],
 
   // Services (all workspaces)
-  ['GET /api/v1/services', () => data.allServices],
+  ['GET /api/v1/services', () => orEmpty(data.allServices)],
 
   // Sandboxes (all workspaces)
-  ['GET /api/v1/sandboxes', () => data.allSandboxes],
+  ['GET /api/v1/sandboxes', () => orEmpty(data.allSandboxes)],
 ];
 
 // Build a compiled router: convert :param patterns to regex.

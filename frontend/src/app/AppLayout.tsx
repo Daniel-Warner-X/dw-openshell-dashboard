@@ -1,13 +1,6 @@
 import { useState } from 'react';
-import { APP_VERSION } from '../constants';
 import {
-  AboutModal,
   Button,
-  Content,
-  DescriptionList,
-  DescriptionListDescription,
-  DescriptionListGroup,
-  DescriptionListTerm,
   Divider,
   Dropdown,
   DropdownItem,
@@ -20,6 +13,7 @@ import {
   MastheadToggle,
   MenuToggle,
   Nav,
+  NavGroup,
   NavItem,
   NavList,
   Page,
@@ -33,6 +27,7 @@ import {
 } from '@patternfly/react-core';
 import {
   BarsIcon,
+  ExternalLinkAltIcon,
   MoonIcon,
   QuestionCircleIcon,
   SunIcon,
@@ -41,7 +36,6 @@ import { Link, useLocation } from 'react-router-dom';
 
 import openshellLogo from '~/assets/openshell-logo.svg';
 import openshellLogoDark from '~/assets/openshell-logo-dark.svg';
-import { useGatewayInfo } from '../api/gateway';
 import { useCurrentUser, useFeatureFlags } from '../api/auth';
 import { useUserRole } from '../api/rbac';
 import CurrentUserModal from '../components/CurrentUserModal';
@@ -56,6 +50,12 @@ type AppLayoutProps = {
   children: React.ReactNode;
 };
 
+// Where the dashboard's documentation lives. OpenShell has no docs site of
+// its own, so this is the project the gateway is part of.
+const DOCS_URL = 'https://github.com/NVIDIA/OpenShell';
+
+type NavGroupId = 'workspaces' | 'platform';
+
 type NavEntry = {
   path: string;
   labelKey:
@@ -65,28 +65,48 @@ type NavEntry = {
     | 'nav.providerProfiles'
     | 'nav.globalPolicy'
     | 'nav.settings';
+  // The section of the sidebar the entry belongs to. An entry with none sits
+  // above the sections, as Gateway does: the dashboard's landing page is not
+  // one of a set.
+  group?: NavGroupId;
   adminOnly?: boolean;
   featureKey?: keyof import('../types').FeatureFlags;
 };
 
+const navGroups: {
+  id: NavGroupId;
+  titleKey: 'nav.groupWorkspaces' | 'nav.groupPlatform';
+}[] = [
+  { id: 'workspaces', titleKey: 'nav.groupWorkspaces' },
+  { id: 'platform', titleKey: 'nav.groupPlatform' },
+];
+
 const navEntries: NavEntry[] = [
   { path: '/gateway', labelKey: 'nav.gateway', adminOnly: true },
-  { path: '/workspaces', labelKey: 'nav.workspaces' },
-  { path: '/all-workspaces', labelKey: 'nav.allWorkspaces', adminOnly: true },
+  { path: '/workspaces', labelKey: 'nav.workspaces', group: 'workspaces' },
+  {
+    path: '/all-workspaces',
+    labelKey: 'nav.allWorkspaces',
+    group: 'workspaces',
+    adminOnly: true,
+  },
   {
     path: '/provider-profiles',
     labelKey: 'nav.providerProfiles',
+    group: 'platform',
     adminOnly: true,
   },
   {
     path: '/global-policy',
     labelKey: 'nav.globalPolicy',
+    group: 'platform',
     adminOnly: true,
     featureKey: 'globalPolicy',
   },
   {
     path: '/settings',
     labelKey: 'nav.settings',
+    group: 'platform',
     adminOnly: true,
     featureKey: 'settings',
   },
@@ -98,8 +118,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const user = useCurrentUser();
   const { isPlatformAdmin, isUser, isLoading: isRoleLoading } = useUserRole();
   const features = useFeatureFlags();
-  const gateway = useGatewayInfo();
-  const [isAboutOpen, setAboutOpen] = useState(false);
   const [isHelpOpen, setHelpOpen] = useState(false);
   const [isUserOpen, setUserOpen] = useState(false);
   const [isIdentityOpen, setIdentityOpen] = useState(false);
@@ -175,12 +193,19 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 popperProps={{ position: 'end' }}
               >
                 <DropdownList>
+                  {/* What the About modal used to say — the dashboard
+                      version, the gateway's version and status, its compute
+                      driver — is the Gateway page, so the menu leads out to
+                      the documentation instead of repeating it. */}
                   <DropdownItem
-                    key="about"
-                    onClick={() => setAboutOpen(true)}
-                    data-testid="about-menu-item"
+                    key="documentation"
+                    to={DOCS_URL}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    icon={<ExternalLinkAltIcon />}
+                    data-testid="documentation-menu-item"
                   >
-                    {t('header.about')}
+                    {t('header.documentation')}
                   </DropdownItem>
                 </DropdownList>
               </Dropdown>
@@ -254,28 +279,50 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     </Masthead>
   );
 
+  const visibleEntries = navEntries.filter(
+    (e) =>
+      (!e.adminOnly || isPlatformAdmin) &&
+      (!e.featureKey || features[e.featureKey]),
+  );
+  const groupedEntries = navGroups
+    .map((group) => ({
+      ...group,
+      entries: visibleEntries.filter((entry) => entry.group === group.id),
+    }))
+    .filter((group) => group.entries.length > 0);
+  // A section heading above the only section there is names the whole
+  // sidebar, which the sidebar already is. Headings earn their place once a
+  // user can see more than one section — a standard user, who sees only
+  // their workspaces, gets the flat list they had.
+  const hasSections = groupedEntries.length > 1;
+
+  const navItem = (entry: NavEntry) => (
+    <NavItem
+      key={entry.path}
+      itemId={entry.path}
+      to={entry.path}
+      isActive={location.pathname.startsWith(entry.path)}
+      component={(props) => <Link {...props} to={entry.path} />}
+    >
+      {t(entry.labelKey)}
+    </NavItem>
+  );
+
   const sidebar = (
     <PageSidebar>
       <PageSidebarBody>
         <Nav aria-label={t('nav.primary')}>
           <NavList>
-            {navEntries
-              .filter(
-                (e) =>
-                  (!e.adminOnly || isPlatformAdmin) &&
-                  (!e.featureKey || features[e.featureKey]),
-              )
-              .map((entry) => (
-                <NavItem
-                  key={entry.path}
-                  itemId={entry.path}
-                  to={entry.path}
-                  isActive={location.pathname.startsWith(entry.path)}
-                  component={(props) => <Link {...props} to={entry.path} />}
-                >
-                  {t(entry.labelKey)}
-                </NavItem>
-              ))}
+            {visibleEntries.filter((entry) => !entry.group).map(navItem)}
+            {groupedEntries.map((group) =>
+              hasSections ? (
+                <NavGroup key={group.id} title={t(group.titleKey)}>
+                  {group.entries.map(navItem)}
+                </NavGroup>
+              ) : (
+                group.entries.map(navItem)
+              ),
+            )}
           </NavList>
         </Nav>
       </PageSidebarBody>
@@ -300,57 +347,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         isOpen={isIdentityOpen}
         onClose={() => setIdentityOpen(false)}
       />
-      <AboutModal
-        isOpen={isAboutOpen}
-        onClose={() => setAboutOpen(false)}
-        productName={t('about.productName')}
-        trademark={t('about.trademark')}
-        brandImageSrc={logoSrc}
-        brandImageAlt={t('about.brandAlt')}
-      >
-        <Content>
-          <DescriptionList
-            isCompact
-            isAutoFit
-            autoFitMinModifier={{ default: '200px' }}
-          >
-            <DescriptionListGroup>
-              <DescriptionListTerm>
-                {t('about.dashboardVersion')}
-              </DescriptionListTerm>
-              <DescriptionListDescription>
-                {APP_VERSION}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>
-                {t('about.gatewayVersion')}
-              </DescriptionListTerm>
-              <DescriptionListDescription>
-                {gateway.data?.gatewayVersion || t('about.unknown')}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>
-                {t('about.gatewayStatus')}
-              </DescriptionListTerm>
-              <DescriptionListDescription>
-                {gateway.data?.status || t('about.unknown')}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>
-                {t('about.computeDriver')}
-              </DescriptionListTerm>
-              <DescriptionListDescription>
-                {gateway.data?.computeDrivers?.[0]
-                  ? `${gateway.data.computeDrivers[0].driverName} ${gateway.data.computeDrivers[0].driverVersion}`
-                  : t('about.unknown')}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-        </Content>
-      </AboutModal>
     </Page>
   );
 };

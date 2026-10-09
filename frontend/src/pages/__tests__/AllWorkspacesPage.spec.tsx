@@ -159,7 +159,7 @@ describe('AllWorkspacesPage', () => {
     renderPage();
 
     expect(
-      screen.getByRole('heading', { level: 1, name: 'All workspaces' }),
+      screen.getByRole('heading', { level: 1, name: 'All resources' }),
     ).toBeInTheDocument();
     expect(headersOf('all-sandboxes-table')).toEqual([
       'Workspace',

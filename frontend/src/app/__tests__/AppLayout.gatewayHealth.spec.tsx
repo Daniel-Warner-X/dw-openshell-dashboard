@@ -86,8 +86,9 @@ describe('AppLayout gateway health', () => {
     answerHealth(true);
     renderShell();
 
-    // The gateway-info request was made and refused...
-    expect(mockUseGatewayInfo).toHaveBeenCalled();
+    // Gateway info is the Gateway page's, and a gateway with roles refuses
+    // it to this user: the shell does not ask for it at all...
+    expect(mockUseGatewayInfo).not.toHaveBeenCalled();
     // ...and the health is there all the same.
     expect(
       masthead().getByTestId('gateway-status-indicator'),
