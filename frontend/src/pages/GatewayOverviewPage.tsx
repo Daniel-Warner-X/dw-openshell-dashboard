@@ -11,7 +11,11 @@ import {
   DescriptionListGroup,
   DescriptionListTerm,
   ExpandableSection,
-  Gallery,
+  Flex,
+  FlexItem,
+  Grid,
+  GridItem,
+  Icon,
   Label,
   LabelGroup,
   List,
@@ -144,18 +148,19 @@ type CountTileProps = {
   testId: string;
 };
 
-// One figure, and the page it came from. The whole tile is not a link —
-// PatternFly's clickable card needs a selectable card wrapper — so the figure
-// is, which is also what someone reads before they decide to go there.
+// One figure and the page it came from, as a figure over its caption. The
+// tiles share a single card rather than being a card each: seven bordered
+// boxes reflowed into a six-and-one row, and a box sized for the widest
+// caption dwarfed the one-digit number in it.
 const CountTile: React.FC<CountTileProps> = ({ label, value, to, testId }) => (
-  <Card isCompact data-testid={testId}>
-    <CardTitle>{label}</CardTitle>
-    <CardBody>
-      <Title headingLevel="h3" size="2xl">
-        <Link to={to}>{value}</Link>
-      </Title>
-    </CardBody>
-  </Card>
+  <div data-testid={testId}>
+    <Title headingLevel="h3" size="2xl">
+      <Link to={to} aria-label={`${label}: ${value}`}>
+        {value}
+      </Link>
+    </Title>
+    <Content component="small">{label}</Content>
+  </div>
 );
 
 // Gateway overview — the dashboard's landing page for a platform admin. It
@@ -344,210 +349,261 @@ const GatewayOverviewPage: React.FC = () => {
         </Content>
       </PageSection>
       <PageSection>
-        <Card data-testid="gateway-status-card">
-          <CardBody>
-            <DescriptionList
-              isAutoFit
-              autoFitMinModifier={{ default: '200px' }}
-              isCompact
-            >
-              <DescriptionListGroup>
-                <DescriptionListTerm>Status</DescriptionListTerm>
-                <DescriptionListDescription>
-                  <Label color={statusColor(status)} icon={statusIcon(status)}>
-                    {info?.status ?? 'UNKNOWN'}
-                  </Label>
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Gateway version</DescriptionListTerm>
-                <DescriptionListDescription data-testid="gateway-version">
-                  {info?.gatewayVersion || '-'}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Dashboard version</DescriptionListTerm>
-                <DescriptionListDescription data-testid="dashboard-version">
-                  {APP_VERSION}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Compatibility</DescriptionListTerm>
-                <DescriptionListDescription data-testid="gateway-compatibility">
-                  {compatibilityText(
-                    compatibility.data?.compatibility ?? info?.compatibility,
-                  )}
-                </DescriptionListDescription>
-              </DescriptionListGroup>
-            </DescriptionList>
-          </CardBody>
-        </Card>
-      </PageSection>
-      {attention.length > 0 && (
-        <PageSection>
-          <Alert
-            variant="warning"
-            isInline
-            title="Needs attention"
-            component="h2"
-            data-testid="gateway-attention"
-          >
-            <List isPlain>
-              {attention.map((item) => (
-                <ListItem key={item.key}>
-                  <Link to={item.to}>{item.text}</Link>
-                </ListItem>
-              ))}
-            </List>
-          </Alert>
-        </PageSection>
-      )}
-      {isEmpty ? (
-        <PageSection>
-          <Card data-testid="gateway-get-started">
-            <CardTitle>Get started</CardTitle>
-            <CardBody>
-              <Content component="p">
-                Nothing has been created on this gateway yet. Three steps make a
-                sandbox an agent can work in.
-              </Content>
-              <ProgressStepper isVertical aria-label="Getting started">
-                <ProgressStep
-                  id="get-started-workspace"
-                  titleId="get-started-workspace-title"
-                  variant="info"
-                  isCurrent
-                  description="A workspace holds a team's sandboxes, providers and members. The gateway starts with one called default."
+        {/* One grid for the whole page, so the blocks are separated by a
+            gutter rather than by a page section's padding each. The top row
+            pairs the two questions that are asked on arrival — is the gateway
+            well, and is anything waiting — side by side. */}
+        <Grid hasGutter>
+          <GridItem lg={8}>
+            <Card isFullHeight data-testid="gateway-status-card">
+              <CardBody>
+                {/* Inline-grid, so the four facts cluster at their own width
+                    instead of being stretched the width of the card. */}
+                <DescriptionList
+                  isAutoFit
+                  autoFitMinModifier={{ default: '180px' }}
+                  isInlineGrid
+                  isCompact
                 >
-                  <Link to="/workspaces">Create a workspace</Link>
-                </ProgressStep>
-                <ProgressStep
-                  id="get-started-provider"
-                  titleId="get-started-provider-title"
-                  variant="pending"
-                  description="A provider holds the credentials a sandbox uses to reach a model or a service. Its type comes from a provider profile."
-                >
-                  <Link to="/workspaces">Add a provider</Link>
-                </ProgressStep>
-                <ProgressStep
-                  id="get-started-sandbox"
-                  titleId="get-started-sandbox-title"
-                  variant="pending"
-                  description="A sandbox is a secure execution environment, governed by the security policy it is created with. Attach the providers it may use."
-                >
-                  <Link to="/workspaces">Create a sandbox</Link>
-                </ProgressStep>
-              </ProgressStepper>
-            </CardBody>
-          </Card>
-        </PageSection>
-      ) : (
-        tiles.length > 0 && (
-          <PageSection>
-            <Gallery
-              hasGutter
-              minWidths={{ default: '160px' }}
-              data-testid="gateway-counts"
-            >
-              {tiles.map((tile) => (
-                <CountTile key={tile.testId} {...tile} />
-              ))}
-            </Gallery>
-          </PageSection>
-        )
-      )}
-      <PageSection>
-        <ExpandableSection
-          toggleText={`Compute drivers (${(info?.computeDrivers ?? []).length})`}
-          data-testid="gateway-drivers-expand"
-        >
-          <Card data-testid="gateway-drivers-card">
-            <CardBody>
-              <Table aria-label="Compute drivers" variant="compact">
-                <Thead>
-                  <Tr>
-                    <Th>Name</Th>
-                    <Th>Driver</Th>
-                    <Th>Version</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {(info?.computeDrivers ?? []).map((driver) => (
-                    <Tr key={driver.name}>
-                      <Td dataLabel="Name">{driver.name}</Td>
-                      <Td dataLabel="Driver">{driver.driverName || '-'}</Td>
-                      <Td dataLabel="Version">{driver.driverVersion || '-'}</Td>
-                    </Tr>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Status</DescriptionListTerm>
+                    <DescriptionListDescription>
+                      <Label
+                        color={statusColor(status)}
+                        icon={statusIcon(status)}
+                      >
+                        {info?.status ?? 'UNKNOWN'}
+                      </Label>
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Gateway version</DescriptionListTerm>
+                    <DescriptionListDescription data-testid="gateway-version">
+                      {info?.gatewayVersion || '-'}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Dashboard version</DescriptionListTerm>
+                    <DescriptionListDescription data-testid="dashboard-version">
+                      {APP_VERSION}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                  <DescriptionListGroup>
+                    <DescriptionListTerm>Compatibility</DescriptionListTerm>
+                    <DescriptionListDescription data-testid="gateway-compatibility">
+                      {compatibilityText(
+                        compatibility.data?.compatibility ??
+                          info?.compatibility,
+                      )}
+                    </DescriptionListDescription>
+                  </DescriptionListGroup>
+                </DescriptionList>
+              </CardBody>
+            </Card>
+          </GridItem>
+          {/* The column beside the health card either carries what is waiting
+              or says that nothing is, so the row is whole either way. */}
+          <GridItem lg={4}>
+            {attention.length > 0 ? (
+              <Alert
+                variant="warning"
+                isInline
+                title="Needs attention"
+                component="h2"
+                data-testid="gateway-attention"
+              >
+                <List isPlain>
+                  {attention.map((item) => (
+                    <ListItem key={item.key}>
+                      <Link to={item.to}>{item.text}</Link>
+                    </ListItem>
                   ))}
-                  {(info?.computeDrivers ?? []).length === 0 && (
-                    <Tr>
-                      <Td colSpan={3}>No compute drivers reported</Td>
-                    </Tr>
-                  )}
-                </Tbody>
-              </Table>
-            </CardBody>
-          </Card>
-        </ExpandableSection>
-        <ExpandableSection
-          toggleText={`Extensions (${extensions.length})`}
-          data-testid="gateway-extensions-expand"
-        >
-          <Card data-testid="gateway-extensions-card">
-            <CardBody>
-              <Table aria-label="Extensions" variant="compact">
-                <Thead>
-                  <Tr>
-                    <Th>Name</Th>
-                    <Th>Kind</Th>
-                    <Th>Implementation</Th>
-                    <Th>Protocol</Th>
-                    <Th>Capabilities</Th>
-                    <Th>Requires from gateway</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {extensions.map((extension) => (
-                    <Tr key={`${extension.kind}/${extension.configuredName}`}>
-                      <Td dataLabel="Name">
-                        {extension.configuredName || '-'}
-                      </Td>
-                      <Td dataLabel="Kind">
-                        {extensionKindLabel(extension.kind)}
-                      </Td>
-                      <Td dataLabel="Implementation">
-                        {[
-                          extension.implementationName,
-                          extension.implementationVersion,
-                        ]
-                          .filter(Boolean)
-                          .join(' ') || '-'}
-                      </Td>
-                      <Td dataLabel="Protocol">
-                        {extension.protocolMajor}.{extension.protocolMinor}
-                      </Td>
-                      <Td dataLabel="Capabilities">
-                        <CapabilityList
-                          capabilities={extension.supportedCapabilities}
-                        />
-                      </Td>
-                      <Td dataLabel="Requires from gateway">
-                        <CapabilityList
-                          capabilities={extension.requiredCapabilities}
-                        />
-                      </Td>
-                    </Tr>
-                  ))}
-                  {extensions.length === 0 && (
-                    <Tr>
-                      <Td colSpan={6}>No extensions reported</Td>
-                    </Tr>
-                  )}
-                </Tbody>
-              </Table>
-            </CardBody>
-          </Card>
-        </ExpandableSection>
+                </List>
+              </Alert>
+            ) : (
+              <Card isFullHeight isPlain data-testid="gateway-all-clear">
+                <CardBody>
+                  <Flex
+                    alignItems={{ default: 'alignItemsCenter' }}
+                    gap={{ default: 'gapSm' }}
+                  >
+                    <FlexItem>
+                      <Icon status="success">
+                        <CheckCircleIcon />
+                      </Icon>
+                    </FlexItem>
+                    <FlexItem>
+                      <Content component="p">Nothing needs attention</Content>
+                    </FlexItem>
+                  </Flex>
+                </CardBody>
+              </Card>
+            )}
+          </GridItem>
+          {isEmpty ? (
+            <GridItem span={12}>
+              <Card data-testid="gateway-get-started">
+                <CardTitle>Get started</CardTitle>
+                <CardBody>
+                  <Content component="p">
+                    Nothing has been created on this gateway yet. Three steps
+                    make a sandbox an agent can work in.
+                  </Content>
+                  <ProgressStepper isVertical aria-label="Getting started">
+                    <ProgressStep
+                      id="get-started-workspace"
+                      titleId="get-started-workspace-title"
+                      variant="info"
+                      isCurrent
+                      description="A workspace holds a team's sandboxes, providers and members. The gateway starts with one called default."
+                    >
+                      <Link to="/workspaces">Create a workspace</Link>
+                    </ProgressStep>
+                    <ProgressStep
+                      id="get-started-provider"
+                      titleId="get-started-provider-title"
+                      variant="pending"
+                      description="A provider holds the credentials a sandbox uses to reach a model or a service. Its type comes from a provider profile."
+                    >
+                      <Link to="/workspaces">Add a provider</Link>
+                    </ProgressStep>
+                    <ProgressStep
+                      id="get-started-sandbox"
+                      titleId="get-started-sandbox-title"
+                      variant="pending"
+                      description="A sandbox is a secure execution environment, governed by the security policy it is created with. Attach the providers it may use."
+                    >
+                      <Link to="/workspaces">Create a sandbox</Link>
+                    </ProgressStep>
+                  </ProgressStepper>
+                </CardBody>
+              </Card>
+            </GridItem>
+          ) : (
+            tiles.length > 0 && (
+              <GridItem span={12}>
+                <Card data-testid="gateway-counts">
+                  <CardTitle>On this gateway</CardTitle>
+                  <CardBody>
+                    {/* Equal columns at every count, rather than a fixed tile
+                        width that leaves the last one stranded on a row of
+                        its own. Below md they take their own width and wrap. */}
+                    <Flex
+                      flexWrap={{ default: 'wrap' }}
+                      gap={{ default: 'gapLg' }}
+                    >
+                      {tiles.map((tile) => (
+                        <FlexItem
+                          key={tile.testId}
+                          flex={{ default: 'flexNone', md: 'flex_1' }}
+                        >
+                          <CountTile {...tile} />
+                        </FlexItem>
+                      ))}
+                    </Flex>
+                  </CardBody>
+                </Card>
+              </GridItem>
+            )
+          )}
+          <GridItem span={12}>
+            <ExpandableSection
+              toggleText={`Compute drivers (${(info?.computeDrivers ?? []).length})`}
+              data-testid="gateway-drivers-expand"
+            >
+              <Card data-testid="gateway-drivers-card">
+                <CardBody>
+                  <Table aria-label="Compute drivers" variant="compact">
+                    <Thead>
+                      <Tr>
+                        <Th>Name</Th>
+                        <Th>Driver</Th>
+                        <Th>Version</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {(info?.computeDrivers ?? []).map((driver) => (
+                        <Tr key={driver.name}>
+                          <Td dataLabel="Name">{driver.name}</Td>
+                          <Td dataLabel="Driver">{driver.driverName || '-'}</Td>
+                          <Td dataLabel="Version">
+                            {driver.driverVersion || '-'}
+                          </Td>
+                        </Tr>
+                      ))}
+                      {(info?.computeDrivers ?? []).length === 0 && (
+                        <Tr>
+                          <Td colSpan={3}>No compute drivers reported</Td>
+                        </Tr>
+                      )}
+                    </Tbody>
+                  </Table>
+                </CardBody>
+              </Card>
+            </ExpandableSection>
+            <ExpandableSection
+              toggleText={`Extensions (${extensions.length})`}
+              data-testid="gateway-extensions-expand"
+            >
+              <Card data-testid="gateway-extensions-card">
+                <CardBody>
+                  <Table aria-label="Extensions" variant="compact">
+                    <Thead>
+                      <Tr>
+                        <Th>Name</Th>
+                        <Th>Kind</Th>
+                        <Th>Implementation</Th>
+                        <Th>Protocol</Th>
+                        <Th>Capabilities</Th>
+                        <Th>Requires from gateway</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {extensions.map((extension) => (
+                        <Tr
+                          key={`${extension.kind}/${extension.configuredName}`}
+                        >
+                          <Td dataLabel="Name">
+                            {extension.configuredName || '-'}
+                          </Td>
+                          <Td dataLabel="Kind">
+                            {extensionKindLabel(extension.kind)}
+                          </Td>
+                          <Td dataLabel="Implementation">
+                            {[
+                              extension.implementationName,
+                              extension.implementationVersion,
+                            ]
+                              .filter(Boolean)
+                              .join(' ') || '-'}
+                          </Td>
+                          <Td dataLabel="Protocol">
+                            {extension.protocolMajor}.{extension.protocolMinor}
+                          </Td>
+                          <Td dataLabel="Capabilities">
+                            <CapabilityList
+                              capabilities={extension.supportedCapabilities}
+                            />
+                          </Td>
+                          <Td dataLabel="Requires from gateway">
+                            <CapabilityList
+                              capabilities={extension.requiredCapabilities}
+                            />
+                          </Td>
+                        </Tr>
+                      ))}
+                      {extensions.length === 0 && (
+                        <Tr>
+                          <Td colSpan={6}>No extensions reported</Td>
+                        </Tr>
+                      )}
+                    </Tbody>
+                  </Table>
+                </CardBody>
+              </Card>
+            </ExpandableSection>
+          </GridItem>
+        </Grid>
       </PageSection>
     </>
   );

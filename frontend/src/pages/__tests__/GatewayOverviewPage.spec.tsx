@@ -259,6 +259,10 @@ describe('GatewayOverviewPage', () => {
     );
     renderPage();
     expect(screen.queryByTestId('gateway-attention')).not.toBeInTheDocument();
+    // The column beside the health card says so rather than going blank.
+    expect(screen.getByTestId('gateway-all-clear')).toHaveTextContent(
+      'Nothing needs attention',
+    );
 
     mockUseAllSandboxes.mockReturnValue(
       answered([sandbox('agent', 'READY'), sandbox('builder', 'ERROR')]),
@@ -274,6 +278,9 @@ describe('GatewayOverviewPage', () => {
     expect(
       attention.getByText(/^No providers/, { selector: 'a' }),
     ).toBeInTheDocument();
+    // The second render is the one with something waiting; the all-clear
+    // panel belongs to the first, which is still mounted beside it.
+    expect(screen.getAllByTestId('gateway-all-clear')).toHaveLength(1);
   });
 
   // A rule an agent proposed is a sandbox held up until somebody decides on
