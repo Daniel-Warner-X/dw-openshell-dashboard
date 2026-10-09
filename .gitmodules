@@ -1,0 +1,6 @@
+[submodule ".agents/skills/prototype-creator"]
+	path = .agents/skills/prototype-creator
+	url = https://github.com/andybraren/prototype-creator.git
+[submodule ".agents/skills/decision-kit"]
+	path = .agents/skills/decision-kit
+	url = https://github.com/jnemargut/decision-kit.git

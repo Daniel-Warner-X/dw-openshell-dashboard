@@ -30,3 +30,14 @@ frontend/cypress/screenshots/
 
 # compat stack rendered config
 deploy/ci/.rendered/
+
+# Prototyping output (see docs/PROTOTYPING.md).
+# Decision Kit writes decision artifacts here; prototype-creator writes
+# fetched context and generated prototypes. All are regenerable — commit a
+# prototype deliberately, somewhere else, rather than letting it land here.
+.decisions/
+.decisions-naming/
+.context/
+.artifacts/
+artifacts/
+local/
