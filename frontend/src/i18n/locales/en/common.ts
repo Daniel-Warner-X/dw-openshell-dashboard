@@ -1,6 +1,6 @@
 export default {
   nav: {
-    gateway: 'Gateway report',
+    gateway: 'Gateway',
     workspaces: 'Workspaces',
     // The page lists sandboxes, providers, templates and services across
     // every workspace — resources, not workspaces, which is the question
@@ -8,11 +8,13 @@ export default {
     // the old label invited.
     allWorkspaces: 'All resources',
     proposals: 'Proposals',
-    providerProfiles: 'Provider profiles',
+    providerProfiles: 'Identity providers',
     globalPolicy: 'Global policy',
     settings: 'Settings',
     primary: 'Primary navigation',
     global: 'Global navigation',
+    // The sidebar's sections are told apart by a rule and no longer named.
+    // Kept all the same — a locale is published API.
     groupWorkspaces: 'Workspaces',
     groupPlatform: 'Platform',
   },

@@ -29,7 +29,7 @@ describe('ProviderProfilesPage', () => {
     mockIsPlatformAdmin = true;
     render(<ProviderProfilesPage />);
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Provider profiles' }),
+      screen.getByRole('heading', { level: 1, name: 'Identity providers' }),
     ).toBeVisible();
     expect(screen.getByTestId('profiles-panel')).toHaveTextContent(
       '@platform manage',

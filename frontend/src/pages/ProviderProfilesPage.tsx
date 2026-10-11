@@ -14,7 +14,7 @@ const ProviderProfilesPage: React.FC = () => {
     <>
       <PageSection>
         <Title headingLevel="h1" className="pf-v6-u-mb-sm">
-          Provider profiles
+          Identity providers
         </Title>
         <Content component="p">
           Platform-scoped provider profiles. Every workspace sees them and can

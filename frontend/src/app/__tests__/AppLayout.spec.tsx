@@ -95,10 +95,10 @@ const renderShell = (route: string, page: React.ReactNode) =>
     </MemoryRouter>,
   );
 
-// An entry of the sidebar, by its label. A link and not its text: a section
-// heading carries the same words as the entries it groups ("Workspaces"), and
-// jsdom has no width, so the collapsed sidebar is out of the accessibility
-// tree.
+// An entry of the sidebar, by its label. A link and not its text: the page
+// heading carries the same words as the entry that led to it ("Workspaces"),
+// and jsdom has no width, so the collapsed sidebar is out of the
+// accessibility tree.
 const navLink = (name: string) =>
   within(screen.getByLabelText('Primary navigation')).getByRole('link', {
     name,
@@ -177,7 +177,7 @@ describe('AppLayout platform-admin gating', () => {
     renderShell('/workspaces', page);
 
     expect(navLink('Workspaces')).toBeInTheDocument();
-    expect(missingNavLink('Gateway report')).not.toBeInTheDocument();
+    expect(missingNavLink('Gateway')).not.toBeInTheDocument();
     expect(missingNavLink('Global policy')).not.toBeInTheDocument();
     expect(missingNavLink('Settings')).not.toBeInTheDocument();
   });
@@ -186,7 +186,7 @@ describe('AppLayout platform-admin gating', () => {
     mockUser({ roles: ['admin'] });
     renderShell('/workspaces', page);
 
-    expect(navLink('Gateway report')).toBeInTheDocument();
+    expect(navLink('Gateway')).toBeInTheDocument();
     expect(navLink('Workspaces')).toBeInTheDocument();
     expect(navLink('Global policy')).toBeInTheDocument();
     expect(navLink('Settings')).toBeInTheDocument();

@@ -214,6 +214,21 @@ describe('GatewayOverviewPage', () => {
     expect(tile('gateway-count-settings')).toHaveTextContent('1');
   });
 
+  // A column of counts reads as one column, so the row with nothing in it
+  // says it the way the rows beside it would: a numeral, not a word.
+  it('writes no global policy as a figure', () => {
+    mockUseGatewayInfo.mockReturnValue(
+      answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
+    );
+    renderPage();
+
+    expect(
+      within(screen.getByTestId('gateway-count-global-policy')).getByRole(
+        'link',
+      ),
+    ).toHaveTextContent('0');
+  });
+
   // The four lists across workspaces are answered for platform admins only.
   // A refusal is not a zero, so the tile is left out rather than made up.
   it('leaves out the count the gateway refused', () => {
@@ -271,7 +286,9 @@ describe('GatewayOverviewPage', () => {
       'href',
       '/workspaces/team-a/sandboxes/builder?tab=logs',
     );
-    expect(attention.getByText(/Provisioning failed/)).toBeInTheDocument();
+    // The badge beside it says which of the card's kinds it is, which is all
+    // a row says about itself now that the sentence under it is gone.
+    expect(attention.getByText('Sandbox error')).toBeInTheDocument();
     expect(
       attention.getByText(/^No providers/, { selector: 'a' }),
     ).toBeInTheDocument();
@@ -323,14 +340,9 @@ describe('GatewayOverviewPage', () => {
     );
     expect(rows[1]).toHaveTextContent('quiet');
     expect(rows[2]).toHaveTextContent('builder');
-    expect(
-      card.getByText(
-        '2 policy rules waiting for a decision in team-b, flagged by the prover.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      card.getByText('1 policy rule waiting for a decision in team-a.'),
-    ).toBeInTheDocument();
+    // Each row is badged with its kind: the two proposals, then the error.
+    expect(card.getAllByText('Proposal')).toHaveLength(2);
+    expect(card.getByText('Sandbox error')).toBeInTheDocument();
   });
 
   // A summary that carries a total but no sandboxes still says so, and all
@@ -369,6 +381,8 @@ describe('GatewayOverviewPage', () => {
     expect(card.getByTestId('gateway-attention-type')).toHaveTextContent(
       'All types',
     );
+    // The badge counts the rows under the heading, so it follows the filter.
+    expect(card.getByTestId('gateway-attention-count')).toHaveTextContent('2');
     // The menu itself is a popper, outside the card.
     fireEvent.click(card.getByTestId('gateway-attention-type'));
     const menu = within(screen.getByRole('menu'));
@@ -379,6 +393,7 @@ describe('GatewayOverviewPage', () => {
 
     expect(card.getByText('builder')).toBeInTheDocument();
     expect(card.queryByText(/^No providers/)).not.toBeInTheDocument();
+    expect(card.getByTestId('gateway-attention-count')).toHaveTextContent('1');
   });
 
   it('displays compute drivers table', () => {
@@ -396,7 +411,7 @@ describe('GatewayOverviewPage', () => {
     };
     mockUseGatewayInfo.mockReturnValue(answered(info));
     renderPage();
-    expect(screen.getByText('Compute drivers (2)')).toBeInTheDocument();
+    expect(screen.getByTestId('gateway-drivers-count')).toHaveTextContent('2');
     expect(screen.getByTestId('gateway-drivers-card')).toBeInTheDocument();
     expect(screen.getByText('local-podman')).toBeInTheDocument();
     expect(screen.getByText('k8s-cluster')).toBeInTheDocument();
@@ -432,7 +447,9 @@ describe('GatewayOverviewPage', () => {
     mockUseGatewayInfo.mockReturnValue(answered(info));
     renderPage();
 
-    expect(screen.getByText('Extensions (2)')).toBeInTheDocument();
+    expect(screen.getByTestId('gateway-extensions-count')).toHaveTextContent(
+      '2',
+    );
 
     const card = within(screen.getByTestId('gateway-extensions-card'));
     expect(
@@ -512,7 +529,9 @@ describe('GatewayOverviewPage', () => {
     );
     renderPage();
 
-    expect(screen.getByText('Extensions (0)')).toBeInTheDocument();
+    expect(screen.getByTestId('gateway-extensions-count')).toHaveTextContent(
+      '0',
+    );
     expect(
       within(screen.getByTestId('gateway-extensions-card')).getByText(
         'No extensions reported',

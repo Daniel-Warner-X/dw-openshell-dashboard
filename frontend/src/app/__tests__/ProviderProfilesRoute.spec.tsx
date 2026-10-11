@@ -80,7 +80,7 @@ describe('the provider profiles page', () => {
     renderAt('/provider-profiles');
 
     const link = within(nav()).getByRole('link', {
-      name: 'Provider profiles',
+      name: 'Identity providers',
       hidden: true,
     });
     expect(link).toHaveAttribute('href', '/provider-profiles');
@@ -94,7 +94,7 @@ describe('the provider profiles page', () => {
 
     expect(
       within(nav()).queryByRole('link', {
-        name: 'Provider profiles',
+        name: 'Identity providers',
         hidden: true,
       }),
     ).not.toBeInTheDocument();

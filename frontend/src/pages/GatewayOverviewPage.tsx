@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Alert,
+  Badge,
   Bullseye,
   Button,
   Card,
@@ -34,6 +35,7 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
+  InfoCircleIcon,
 } from '@patternfly/react-icons';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { Link } from 'react-router-dom';
@@ -116,38 +118,56 @@ const countOf = (query: {
 }): number | undefined =>
   query.isError || !query.data ? undefined : query.data.length;
 
-// The icon beside a line in Needs attention. Danger is something that has
-// already gone wrong; warning is something that will unless it is dealt
-// with. The same two the masthead's health indicator uses, so one shape
-// means one thing across the page.
-const ATTENTION_ICON = {
-  danger: <ExclamationCircleIcon />,
-  warning: <ExclamationTriangleIcon />,
-} as const;
-
 // The three kinds of thing that can be waiting, which are also what the
 // card's filter offers. A kind with nothing in it is not offered.
 const ATTENTION_TYPES = ['proposals', 'errors', 'setup'] as const;
 
 type AttentionType = (typeof ATTENTION_TYPES)[number];
 
+// Plural, because the filter picks out a set of them and counts it.
 const ATTENTION_TYPE_LABEL: Record<AttentionType, string> = {
   proposals: 'Proposals',
   errors: 'Sandbox errors',
   setup: 'Setup',
 };
 
-// One line of Needs attention: the thing it is about, named, and a sentence
-// saying what is wrong with it.
+// Singular, because a badge is on one row and says what that row is.
+const ATTENTION_BADGE_LABEL: Record<AttentionType, string> = {
+  proposals: 'Proposal',
+  errors: 'Sandbox error',
+  setup: 'Setup',
+};
+
+// What a kind means, told in the badge's colour. Danger is something that has
+// already gone wrong; warning is something that will unless it is dealt with;
+// info — PatternFly's purple — is a decision waiting on a person, which is a
+// proposal exactly. Nothing has gone wrong with a sandbox whose agent asked
+// for a rule, and a card read before anything has is the wrong place to say
+// otherwise.
+const ATTENTION_STATUS: Record<AttentionType, 'info' | 'warning' | 'danger'> = {
+  proposals: 'info',
+  errors: 'danger',
+  setup: 'warning',
+};
+
+// PatternFly's own status icons are the filled variants. These are the
+// outline ones the masthead's health indicator uses, so one shape means one
+// thing across the page.
+const ATTENTION_ICON: Record<AttentionType, React.ReactElement> = {
+  proposals: <InfoCircleIcon />,
+  errors: <ExclamationCircleIcon />,
+  setup: <ExclamationTriangleIcon />,
+};
+
+// One line of Needs attention: the thing it is about, named and badged with
+// its kind.
 type AttentionItem = {
   key: string;
   type: AttentionType;
-  status: 'warning' | 'danger';
   // The name of the thing, which is the link. A sandbox is named rather than
   // counted: "3 sandboxes in error" is not something anybody can act on
   // without first finding out which three.
   text: string;
-  detail: string;
   to: string;
 };
 
@@ -368,7 +388,10 @@ const GatewayOverviewPage: React.FC = () => {
   if (policyInForce !== undefined) {
     inventory.push({
       label: 'Global policy',
-      value: policyInForce ? 'In force' : 'None',
+      // A numeral where there is none, so the column of counts beside it
+      // reads as one column. There is at most one global policy, so the
+      // other case is not a figure but what that one policy is doing.
+      value: policyInForce ? 'In force' : 0,
       to: '/global-policy',
       testId: 'gateway-count-global-policy',
     });
@@ -399,10 +422,10 @@ const GatewayOverviewPage: React.FC = () => {
   // the strip above, and the app shell raises a notice above every page when
   // it is a problem.
   //
-  // After PatternFly's own dashboard events card: a status icon and a short
-  // title that is the link, then a sentence under it saying what the title
-  // means and what is to be done about it. The headline alone is a count
-  // without a consequence, which is what the old bulleted alert was.
+  // After PatternFly's own dashboard events card: a status badge and a short
+  // title that is the link. The sentence that used to follow the title,
+  // saying what it meant and what was to be done about it, is gone for now —
+  // which leaves the badge carrying what the row is about on its own.
   const attention: AttentionItem[] = [];
   // First: a rule an agent proposed is a sandbox held up until somebody
   // decides on it. One line per sandbox, named, because approving is done in
@@ -416,25 +439,13 @@ const GatewayOverviewPage: React.FC = () => {
       pendingSandboxes.map((entry) => ({
         key: `proposals-${entry.workspace}/${entry.sandboxName}`,
         type: 'proposals' as const,
-        status: entry.hasSecurityFlags
-          ? ('danger' as const)
-          : ('warning' as const),
         text: entry.sandboxName,
-        detail: entry.unavailable
-          ? `Its proposal inbox in ${entry.workspace} could not be read, so what is waiting in it is not known.`
-          : `${entry.pendingCount} policy ${
-              entry.pendingCount === 1 ? 'rule' : 'rules'
-            } waiting for a decision in ${entry.workspace}${
-              entry.hasSecurityFlags ? ', flagged by the prover' : ''
-            }.`,
         to: sandboxPath(entry.workspace, entry.sandboxName, 'proposals'),
       })),
       (hidden) => ({
         key: 'proposals-more',
         type: 'proposals' as const,
-        status: 'warning' as const,
         text: `${hidden} more ${hidden === 1 ? 'sandbox' : 'sandboxes'} with proposals`,
-        detail: 'Every sandbox with a rule waiting is on the Proposals page.',
         to: '/proposals',
       }),
     ),
@@ -445,13 +456,9 @@ const GatewayOverviewPage: React.FC = () => {
     attention.push({
       key: 'proposals',
       type: 'proposals',
-      status: 'warning',
       text: `${proposals.totalPending} policy ${
         proposals.totalPending === 1 ? 'rule' : 'rules'
       } waiting for a decision`,
-      detail: `An agent proposed ${
-        proposals.totalPending === 1 ? 'it' : 'them'
-      }. Each takes effect only once somebody approves it.`,
       to: '/proposals',
     });
   }
@@ -460,14 +467,10 @@ const GatewayOverviewPage: React.FC = () => {
       erroredSandboxes.map((sandbox) => ({
         key: `errored-${sandbox.metadata.workspace}/${sandbox.metadata.name}`,
         type: 'errors' as const,
-        status: 'danger' as const,
         text: sandbox.metadata.name,
-        // Where the sandbox is, and the two things ERROR can mean: the
-        // gateway could not provision it, or its main process exited
-        // non-zero (hard fact 1). Only the log says which.
-        detail: `In ${
-          sandbox.metadata.workspace || 'an unnamed workspace'
-        }. Provisioning failed, or the main process exited non-zero; the log says which.`,
+        // ERROR means one of two things — the gateway could not provision
+        // the sandbox, or its main process exited non-zero (hard fact 1) —
+        // and only the log says which, so the row leads there.
         to: sandboxPath(
           sandbox.metadata.workspace ?? '',
           sandbox.metadata.name,
@@ -477,9 +480,7 @@ const GatewayOverviewPage: React.FC = () => {
       (hidden) => ({
         key: 'errored-more',
         type: 'errors' as const,
-        status: 'danger' as const,
         text: `${hidden} more ${hidden === 1 ? 'sandbox' : 'sandboxes'} in error`,
-        detail: 'Every sandbox on the gateway is under All resources.',
         to: '/all-workspaces',
       }),
     ),
@@ -488,10 +489,7 @@ const GatewayOverviewPage: React.FC = () => {
     attention.push({
       key: 'no-providers',
       type: 'setup',
-      status: 'warning',
       text: 'No providers',
-      detail:
-        'Sandboxes have no credentials to reach a model or a service until one is added.',
       to: '/all-workspaces',
     });
   }
@@ -513,7 +511,7 @@ const GatewayOverviewPage: React.FC = () => {
     <>
       <PageSection>
         <Title headingLevel="h1" className="pf-v6-u-mb-sm">
-          Gateway report
+          Gateway
         </Title>
         <Content component="p">
           Admin view of status, inventory, and alerts.
@@ -537,21 +535,18 @@ const GatewayOverviewPage: React.FC = () => {
                   on every page, and saying it again a fold below itself is
                   the same fact twice.
 
-                  The margin is what keeps the last rule the length of the
-                  others. A card clips its content to a 16px corner radius, so
-                  a list flush with the bottom of one has the ends of its
-                  final rule cut off. Held a card's own bottom padding clear
-                  of the curve, the rule is drawn whole. */}
-              <DataList
-                aria-label="Details"
-                isCompact
-                gridBreakpoint="none"
-                className="pf-v6-u-mb-lg"
-              >
-                {details.map((item) => (
-                  <CardListRow key={item.testId} {...item} />
-                ))}
-              </DataList>
+                  In a body, as any card's content is. A list put straight
+                  into the card ran its rules the full width, which read well
+                  until you saw what it cost: full-bleed content paints over
+                  the card's own side borders, so the frame survived only
+                  beside the heading and under the last row. */}
+              <CardBody>
+                <DataList aria-label="Details" isCompact gridBreakpoint="none">
+                  {details.map((item) => (
+                    <CardListRow key={item.testId} {...item} />
+                  ))}
+                </DataList>
+              </CardBody>
             </Card>
           </GridItem>
           {showInventory && (
@@ -559,23 +554,21 @@ const GatewayOverviewPage: React.FC = () => {
               <Card data-testid="gateway-counts">
                 <CardTitle component="h2">Inventory</CardTitle>
                 {/* Rows rather than tiles, after PatternFly's own dashboard
-                    inventory card. The list is a direct child of the card and
-                    not of a body, so each rule runs the card's full width
-                    instead of stopping short of its padding. A column rather
-                    than a band across the page: a figure right-aligned at the
-                    far edge of a full-width card is a long way from the name
-                    of what it counts. The margin keeps the last rule off the
-                    card's rounded corner, which would otherwise clip it. */}
-                <DataList
-                  aria-label="Inventory"
-                  isCompact
-                  gridBreakpoint="none"
-                  className="pf-v6-u-mb-lg"
-                >
-                  {inventory.map((item) => (
-                    <CardListRow key={item.testId} {...item} />
-                  ))}
-                </DataList>
+                    inventory card. A column rather than a band across the
+                    page: a figure right-aligned at the far edge of a
+                    full-width card is a long way from the name of what it
+                    counts. */}
+                <CardBody>
+                  <DataList
+                    aria-label="Inventory"
+                    isCompact
+                    gridBreakpoint="none"
+                  >
+                    {inventory.map((item) => (
+                      <CardListRow key={item.testId} {...item} />
+                    ))}
+                  </DataList>
+                </CardBody>
               </Card>
             </GridItem>
           )}
@@ -595,14 +588,17 @@ const GatewayOverviewPage: React.FC = () => {
                     heading. It offers only the kinds that are waiting, so
                     choosing one can never empty the card. */}
                 <CardHeader
-                  // The heading box is as tall as what is in it, and a
-                  // full-size control in it made this one taller than the
-                  // bare titles of the two cards beside it. A small toggle,
-                  // and the smaller padding a card title has under it,
-                  // bring the three headings back to one height.
+                  // The two cards beside this one have a bare title, whose
+                  // box is 24 over and 16 under the one line in it. This
+                  // one has to come to the same height or its list starts
+                  // lower than theirs and the first rule of the three is in
+                  // three places. Hence the 16 under, which a header does
+                  // not have by default; and hence leaving PatternFly's own
+                  // offset on, which pulls the actions up and down by a
+                  // control's vertical padding so that a control in a
+                  // heading does not make the heading taller than its text.
                   className="pf-v6-u-pb-md"
                   actions={{
-                    hasNoOffset: true,
                     actions: (
                       <Dropdown
                         isOpen={isTypeOpen}
@@ -652,104 +648,112 @@ const GatewayOverviewPage: React.FC = () => {
                     ),
                   }}
                 >
-                  <CardTitle component="h2">Needs attention</CardTitle>
+                  <CardTitle component="h2">
+                    Needs attention{' '}
+                    {/* How many rows are under the heading, badged the way the
+                        two full-width cards below badge theirs. It counts what
+                        is shown rather than what is waiting, so that it agrees
+                        with the list beneath it once a kind is picked. */}
+                    <Badge isRead data-testid="gateway-attention-count">
+                      {shownAttention.length}
+                    </Badge>
+                  </CardTitle>
                 </CardHeader>
                 {/* The same list the two cards beside this one are built
-                    from, so the three are ruled off the same way: under
-                    the heading, between the rows and below the last of
-                    them, each rule the full width of the card. A row here
-                    is two lines rather than two columns — what the thing
-                    is called, and a sentence saying what is wrong with
-                    it. The margin keeps the closing rule off the card's
-                    16px corner radius, which would clip its ends. */}
-                <DataList
-                  aria-label="Needs attention"
-                  isCompact
-                  gridBreakpoint="none"
-                  className="pf-v6-u-mb-lg"
-                >
-                  {shownAttention.map((item) => (
-                    <DataListItem
-                      key={item.key}
-                      aria-labelledby={`${item.key}-title`}
-                    >
-                      <DataListItemRow>
-                        <DataListItemCells
-                          dataListCells={[
-                            <DataListCell key="item">
-                              <Flex
-                                direction={{ default: 'column' }}
-                                gap={{ default: 'gapXs' }}
-                              >
-                                <FlexItem>
-                                  <Flex
-                                    gap={{ default: 'gapSm' }}
-                                    flexWrap={{ default: 'nowrap' }}
-                                    alignItems={{
-                                      default: 'alignItemsCenter',
-                                    }}
-                                  >
-                                    <FlexItem>
-                                      <Icon status={item.status}>
-                                        {ATTENTION_ICON[item.status]}
-                                      </Icon>
-                                    </FlexItem>
-                                    <FlexItem>
-                                      <Link
-                                        to={item.to}
-                                        id={`${item.key}-title`}
-                                      >
-                                        {item.text}
-                                      </Link>
-                                    </FlexItem>
-                                  </Flex>
-                                </FlexItem>
-                                <FlexItem>{item.detail}</FlexItem>
-                              </Flex>
-                            </DataListCell>,
-                          ]}
-                        />
-                      </DataListItemRow>
-                    </DataListItem>
-                  ))}
-                </DataList>
+                    from, in a body as they are, so the three are ruled off
+                    the same way. A row is one line: what the thing is
+                    called, badged with which of the filter's kinds it is.
+                    The sentence that used to sit under it, saying what was
+                    wrong, is gone for now. */}
+                <CardBody>
+                  <DataList
+                    aria-label="Needs attention"
+                    isCompact
+                    gridBreakpoint="none"
+                  >
+                    {shownAttention.map((item) => (
+                      <DataListItem
+                        key={item.key}
+                        aria-labelledby={`${item.key}-title`}
+                      >
+                        <DataListItemRow>
+                          <DataListItemCells
+                            dataListCells={[
+                              <DataListCell key="item">
+                                <Flex
+                                  gap={{ default: 'gapSm' }}
+                                  flexWrap={{ default: 'nowrap' }}
+                                  alignItems={{
+                                    default: 'alignItemsCenter',
+                                  }}
+                                >
+                                  <FlexItem>
+                                    <Label
+                                      status={ATTENTION_STATUS[item.type]}
+                                      icon={ATTENTION_ICON[item.type]}
+                                      // Outlined: a filled badge on every row
+                                      // shouted the column, which is the thing
+                                      // the alert this card replaced was
+                                      // dropped for. The outline keeps the
+                                      // colour and the word and gives back
+                                      // the quiet.
+                                      variant="outline"
+                                    >
+                                      {ATTENTION_BADGE_LABEL[item.type]}
+                                    </Label>
+                                  </FlexItem>
+                                  <FlexItem>
+                                    <Link to={item.to} id={`${item.key}-title`}>
+                                      {item.text}
+                                    </Link>
+                                  </FlexItem>
+                                </Flex>
+                              </DataListCell>,
+                            ]}
+                          />
+                        </DataListItemRow>
+                      </DataListItem>
+                    ))}
+                  </DataList>
+                </CardBody>
               </Card>
             ) : (
               // The same card, built the same way, so that the column does
               // not change shape when the last thing waiting is dealt with.
               <Card data-testid="gateway-all-clear">
                 <CardTitle component="h2">Needs attention</CardTitle>
-                <DataList
-                  aria-label="Needs attention"
-                  isCompact
-                  gridBreakpoint="none"
-                  className="pf-v6-u-mb-lg"
-                >
-                  <DataListItem aria-labelledby="gateway-all-clear-label">
-                    <DataListItemRow>
-                      <DataListItemCells
-                        dataListCells={[
-                          <DataListCell key="all-clear">
-                            <Flex
-                              gap={{ default: 'gapSm' }}
-                              flexWrap={{ default: 'nowrap' }}
-                              alignItems={{ default: 'alignItemsCenter' }}
-                            >
-                              <FlexItem>
-                                <Icon status="success">
-                                  <CheckCircleIcon />
-                                </Icon>
-                              </FlexItem>
-                              <FlexItem id="gateway-all-clear-label">
-                                Nothing needs attention
-                              </FlexItem>
-                            </Flex>
-                          </DataListCell>,
-                        ]}
-                      />
-                    </DataListItemRow>
-                  </DataListItem>
-                </DataList>
+                <CardBody>
+                  <DataList
+                    aria-label="Needs attention"
+                    isCompact
+                    gridBreakpoint="none"
+                  >
+                    <DataListItem aria-labelledby="gateway-all-clear-label">
+                      <DataListItemRow>
+                        <DataListItemCells
+                          dataListCells={[
+                            <DataListCell key="all-clear">
+                              <Flex
+                                gap={{ default: 'gapSm' }}
+                                flexWrap={{ default: 'nowrap' }}
+                                alignItems={{ default: 'alignItemsCenter' }}
+                              >
+                                <FlexItem>
+                                  <Icon status="success">
+                                    <CheckCircleIcon />
+                                  </Icon>
+                                </FlexItem>
+                                <FlexItem id="gateway-all-clear-label">
+                                  Nothing needs attention
+                                </FlexItem>
+                              </Flex>
+                            </DataListCell>,
+                          ]}
+                        />
+                      </DataListItemRow>
+                    </DataListItem>
+                  </DataList>
+                </CardBody>
               </Card>
             )}
           </GridItem>
@@ -807,9 +811,23 @@ const GatewayOverviewPage: React.FC = () => {
               start of a band rather than as another card of the row. */}
           <GridItem span={12} className="pf-v6-u-mt-md">
             <Card data-testid="gateway-drivers-card">
-              <CardTitle component="h2">
-                {`Compute drivers (${(info?.computeDrivers ?? []).length})`}
-              </CardTitle>
+              {/* The count badged rather than bracketed, the way a count
+                  beside a heading is written everywhere else in the
+                  dashboard, and a sentence under it saying what is being
+                  counted — a table of names means nothing to a reader who
+                  does not already know what a compute driver is. */}
+              <CardHeader>
+                <CardTitle component="h2" className="pf-v6-u-mb-sm">
+                  Compute drivers{' '}
+                  <Badge isRead data-testid="gateway-drivers-count">
+                    {(info?.computeDrivers ?? []).length}
+                  </Badge>
+                </CardTitle>
+                <Content component="p">
+                  Pluggable components that create, inspect, and delete sandbox
+                  workloads.
+                </Content>
+              </CardHeader>
               <CardBody>
                 <Table aria-label="Compute drivers" variant="compact">
                   <Thead>
@@ -841,9 +859,19 @@ const GatewayOverviewPage: React.FC = () => {
           </GridItem>
           <GridItem span={12} className="pf-v6-u-mt-md">
             <Card data-testid="gateway-extensions-card">
-              <CardTitle component="h2">
-                {`Extensions (${extensions.length})`}
-              </CardTitle>
+              <CardHeader>
+                <CardTitle component="h2" className="pf-v6-u-mb-sm">
+                  Extensions{' '}
+                  <Badge isRead data-testid="gateway-extensions-count">
+                    {extensions.length}
+                  </Badge>
+                </CardTitle>
+                <Content component="p">
+                  Specialized components designed to add deployment-specific
+                  behavior to the runtime while preserving core security
+                  boundaries and policy controls.
+                </Content>
+              </CardHeader>
               <CardBody>
                 <Table aria-label="Extensions" variant="compact">
                   <Thead>

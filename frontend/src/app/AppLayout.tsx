@@ -14,7 +14,6 @@ import {
   MastheadToggle,
   MenuToggle,
   Nav,
-  NavGroup,
   NavItem,
   NavItemSeparator,
   NavList,
@@ -67,12 +66,9 @@ type NavEntry = {
   featureKey?: keyof import('../types').FeatureFlags;
 };
 
-const navGroups: {
-  id: NavGroupId;
-  titleKey: 'nav.groupWorkspaces' | 'nav.groupPlatform';
-}[] = [
-  { id: 'workspaces', titleKey: 'nav.groupWorkspaces' },
-  { id: 'platform', titleKey: 'nav.groupPlatform' },
+const navGroups: { id: NavGroupId }[] = [
+  { id: 'workspaces' },
+  { id: 'platform' },
 ];
 
 const navEntries: NavEntry[] = [
@@ -264,10 +260,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       entries: visibleEntries.filter((entry) => entry.group === group.id),
     }))
     .filter((group) => group.entries.length > 0);
-  // A section heading above the only section there is names the whole
-  // sidebar, which the sidebar already is. Headings earn their place once a
-  // user can see more than one section — a standard user, who sees only
-  // their workspaces, gets the flat list they had.
+  // A rule above the only section there is would divide the sidebar from
+  // nothing. Rules earn their place once a user can see more than one section
+  // — a standard user, who sees only their workspaces, gets the flat list
+  // they had.
   const hasSections = groupedEntries.length > 1;
 
   const navItem = (entry: NavEntry) => (
@@ -295,13 +291,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             {visibleEntries.filter((entry) => !entry.group).map(navItem)}
             {groupedEntries.map((group) =>
               hasSections ? (
-                // A rule above each heading, so a section reads as starting
-                // there rather than as a label on the entries above it.
+                // A rule above each section, so the entries below it read as
+                // starting there rather than as more of the set above.
                 <Fragment key={group.id}>
-                  <NavItemSeparator />
-                  <NavGroup title={t(group.titleKey)}>
-                    {group.entries.map(navItem)}
-                  </NavGroup>
+                  <NavItemSeparator data-testid="nav-section-rule" />
+                  {group.entries.map(navItem)}
                 </Fragment>
               ) : (
                 group.entries.map(navItem)

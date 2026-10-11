@@ -100,11 +100,11 @@ describe('AppLayout navigation', () => {
     renderShell('/workspaces');
 
     expect(navLinks()).toEqual([
-      ['Gateway report', '/gateway'],
+      ['Gateway', '/gateway'],
       ['Workspaces', '/workspaces'],
       ['Proposals', '/proposals'],
       ['All resources', '/all-workspaces'],
-      ['Provider profiles', '/provider-profiles'],
+      ['Identity providers', '/provider-profiles'],
       ['Global policy', '/global-policy'],
       ['Settings', '/settings'],
     ]);
@@ -137,26 +137,27 @@ describe('AppLayout navigation', () => {
     expect(screen.queryByTestId('proposals-badge')).not.toBeInTheDocument();
   });
 
-  // Gateway leads, ungrouped: the landing page is not one of a set.
-  it('groups the entries a platform admin sees', () => {
+  // Gateway leads, ungrouped: the landing page is not one of a set. A rule
+  // starts each of the two sections below it, and nothing names them.
+  it('rules off the sections a platform admin sees', () => {
     mockIsPlatformAdmin = true;
     renderShell('/gateway');
 
-    expect(primaryNav().getByText('Workspaces', { selector: 'h2' }));
-    expect(primaryNav().getByText('Platform', { selector: 'h2' }));
-  });
-
-  // One heading above the only section there is names the sidebar, which the
-  // sidebar already is. A standard user keeps the flat list they had.
-  it('leaves the nav flat and unheaded for a standard user', () => {
-    renderShell('/workspaces');
-
+    expect(primaryNav().getAllByTestId('nav-section-rule')).toHaveLength(2);
     expect(
       primaryNav().queryByText('Workspaces', { selector: 'h2' }),
     ).not.toBeInTheDocument();
     expect(
       primaryNav().queryByText('Platform', { selector: 'h2' }),
     ).not.toBeInTheDocument();
+  });
+
+  // A rule above the only section there is would divide the sidebar from
+  // nothing. A standard user keeps the flat list they had.
+  it('leaves the nav flat and unruled for a standard user', () => {
+    renderShell('/workspaces');
+
+    expect(primaryNav().queryAllByTestId('nav-section-rule')).toHaveLength(0);
   });
 
   // The two entries share a word, not a path prefix: each is current only on
