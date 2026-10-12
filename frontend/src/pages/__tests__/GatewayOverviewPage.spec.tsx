@@ -17,6 +17,10 @@ jest.mock('../../api/allWorkspaces', () => ({
 }));
 jest.mock('../../api/workspaces', () => ({ useWorkspaces: jest.fn() }));
 jest.mock('../../api/policy', () => ({ useGlobalPolicy: jest.fn() }));
+jest.mock('../../api/providers', () => ({
+  PLATFORM_PROFILE_SCOPE: '@platform',
+  useProviderProfiles: jest.fn(),
+}));
 jest.mock('../../api/settings', () => ({ useGlobalSettings: jest.fn() }));
 jest.mock('../../api/draftSummary', () => ({
   useAllWorkspacesDraftSummary: jest.fn(),
@@ -39,6 +43,7 @@ import {
 import { useAllWorkspacesDraftSummary } from '../../api/draftSummary';
 import { useGatewayCompatibility, useGatewayInfo } from '../../api/gateway';
 import { useGlobalPolicy } from '../../api/policy';
+import { useProviderProfiles } from '../../api/providers';
 import { useGlobalSettings } from '../../api/settings';
 import { useWorkspaces } from '../../api/workspaces';
 
@@ -50,6 +55,7 @@ const mockUseAllTemplates = useAllTemplates as jest.Mock;
 const mockUseAllServices = useAllServices as jest.Mock;
 const mockUseWorkspaces = useWorkspaces as jest.Mock;
 const mockUseGlobalPolicy = useGlobalPolicy as jest.Mock;
+const mockUseProviderProfiles = useProviderProfiles as jest.Mock;
 const mockUseGlobalSettings = useGlobalSettings as jest.Mock;
 const mockUseDraftSummary = useAllWorkspacesDraftSummary as jest.Mock;
 
@@ -84,6 +90,7 @@ const answerEverythingElse = () => {
   mockUseWorkspaces.mockReturnValue(answered([{}, {}]));
   mockUseAllSandboxes.mockReturnValue(answered([sandbox('agent', 'READY')]));
   mockUseAllProviders.mockReturnValue(answered([{}]));
+  mockUseProviderProfiles.mockReturnValue(answered([{}, {}]));
   mockUseAllTemplates.mockReturnValue(answered([]));
   mockUseAllServices.mockReturnValue(answered([]));
   mockUseGlobalPolicy.mockReturnValue(answered({ activeVersion: 0 }));
@@ -186,15 +193,6 @@ describe('GatewayOverviewPage', () => {
       answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
     );
     mockUseAllTemplates.mockReturnValue(answered([{}, {}, {}]));
-    mockUseGlobalPolicy.mockReturnValue(answered({ activeVersion: 4 }));
-    mockUseGlobalSettings.mockReturnValue(
-      answered({
-        settings: [
-          { key: 'ocsf_json_enabled', value: true },
-          { key: 'ocsf_schema_version' },
-        ],
-      }),
-    );
     renderPage();
 
     const tile = (testId: string) =>
@@ -205,28 +203,37 @@ describe('GatewayOverviewPage', () => {
       '/workspaces',
     );
     expect(tile('gateway-count-sandboxes')).toHaveTextContent('1');
-    expect(tile('gateway-count-providers')).toHaveTextContent('1');
     expect(tile('gateway-count-templates')).toHaveTextContent('3');
     expect(tile('gateway-count-services')).toHaveTextContent('0');
-    // A history of revisions is not a policy: only an active version is one.
-    expect(tile('gateway-count-global-policy')).toHaveTextContent('In force');
-    // Every registered key comes back, one that was never set with no value.
-    expect(tile('gateway-count-settings')).toHaveTextContent('1');
+    // The platform's provider profiles, which is what the Identity providers
+    // page lists — not the providers made from them.
+    expect(tile('gateway-count-provider-profiles')).toHaveTextContent('2');
+    expect(tile('gateway-count-provider-profiles')).toHaveAttribute(
+      'href',
+      '/provider-profiles',
+    );
   });
 
-  // A column of counts reads as one column, so the row with nothing in it
-  // says it the way the rows beside it would: a numeral, not a word.
-  it('writes no global policy as a figure', () => {
+  // The four that are counted across workspaces are the four the All
+  // resources page has a tab for, in its order; the profiles are a page of
+  // their own and come after them.
+  it('counts them in the order the All resources page lists them', () => {
     mockUseGatewayInfo.mockReturnValue(
       answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
     );
     renderPage();
 
-    expect(
-      within(screen.getByTestId('gateway-count-global-policy')).getByRole(
-        'link',
-      ),
-    ).toHaveTextContent('0');
+    // The label is beside the figure, not in the link; the link names both.
+    const rows = within(screen.getByTestId('gateway-counts'))
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('aria-label'));
+    expect(rows).toEqual([
+      'Workspaces: 2',
+      'Sandboxes: 1',
+      'Templates: 0',
+      'Services: 0',
+      'Identity providers: 2',
+    ]);
   });
 
   // The four lists across workspaces are answered for platform admins only.

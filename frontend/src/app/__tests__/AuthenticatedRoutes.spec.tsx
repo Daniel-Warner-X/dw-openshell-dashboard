@@ -68,6 +68,24 @@ describe('AuthenticatedRoutes', () => {
     expect(screen.queryByTestId('workspace-list')).not.toBeInTheDocument();
   });
 
+  // Breadcrumb puts the divider on each child after the first, and it counts
+  // its children without looking inside a fragment. Grouping the deeper two
+  // in one left a sandbox's trail reading "Workspaces default sb" with
+  // nothing between the names.
+  it('divides every crumb of a sandbox from the one before it', () => {
+    const { container } = renderAt('/workspaces/team-a/sandboxes/sb');
+
+    const crumbs = screen.getAllByRole('listitem');
+    expect(crumbs.map((crumb) => crumb.textContent)).toEqual([
+      'Workspaces',
+      'team-a',
+      'sb',
+    ]);
+    expect(
+      container.querySelectorAll('.pf-v6-c-breadcrumb__item-divider'),
+    ).toHaveLength(2);
+  });
+
   // It sits beside /workspaces, not under it: a workspace named
   // "all-workspaces" would otherwise be shadowed, and the reverse.
   it('keeps the workspace routes where they were', () => {

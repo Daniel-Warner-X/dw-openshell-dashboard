@@ -49,8 +49,7 @@ import {
 import { useFeatureFlags } from '../api/auth';
 import { useAllWorkspacesDraftSummary } from '../api/draftSummary';
 import { useGatewayCompatibility, useGatewayInfo } from '../api/gateway';
-import { useGlobalPolicy } from '../api/policy';
-import { useGlobalSettings } from '../api/settings';
+import { PLATFORM_PROFILE_SCOPE, useProviderProfiles } from '../api/providers';
 import { useWorkspaces } from '../api/workspaces';
 import { APP_VERSION } from '../constants';
 import type {
@@ -258,10 +257,13 @@ const GatewayOverviewPage: React.FC = () => {
   const workspaces = useWorkspaces();
   const sandboxes = useAllSandboxes();
   const providers = useAllProviders();
+  // What the Identity providers page lists: the platform's own profiles, the
+  // ones that belong to no workspace and that every workspace can create a
+  // provider from. The gateway answers this scope for platform admins only,
+  // which is who this page is for.
+  const profiles = useProviderProfiles(PLATFORM_PROFILE_SCOPE);
   const templates = useAllTemplates();
   const services = useAllServices({ enabled: features.services });
-  const globalPolicy = useGlobalPolicy(features.globalPolicy);
-  const settings = useGlobalSettings(features.settings);
   // The same query the shell's Proposals badge reads, so this costs the
   // gateway nothing beyond what the badge already asks for.
   const proposals = useAllWorkspacesDraftSummary(features.draftPolicy);
@@ -307,22 +309,9 @@ const GatewayOverviewPage: React.FC = () => {
   const workspaceCount = countOf(workspaces);
   const sandboxCount = countOf(sandboxes);
   const providerCount = countOf(providers);
+  const profileCount = countOf(profiles);
   const templateCount = countOf(templates);
   const serviceCount = features.services ? countOf(services) : undefined;
-  // activeVersion is zero when no global policy is in force; a history of
-  // revisions is not a policy.
-  const policyInForce =
-    !features.globalPolicy || globalPolicy.isError || !globalPolicy.data
-      ? undefined
-      : (globalPolicy.data.activeVersion ?? 0) > 0;
-  // Every registered key comes back from the gateway, and one that was never
-  // set comes back with no value at all. What is worth counting is the ones
-  // somebody changed.
-  const settingCount =
-    !features.settings || settings.isError || !settings.data
-      ? undefined
-      : settings.data.settings.filter((entry) => entry.value !== undefined)
-          .length;
 
   const details: CardRow[] = [
     {
@@ -361,14 +350,6 @@ const GatewayOverviewPage: React.FC = () => {
       testId: 'gateway-count-sandboxes',
     });
   }
-  if (providerCount !== undefined) {
-    inventory.push({
-      label: 'Providers',
-      value: providerCount,
-      to: '/all-workspaces',
-      testId: 'gateway-count-providers',
-    });
-  }
   if (templateCount !== undefined) {
     inventory.push({
       label: 'Templates',
@@ -385,23 +366,15 @@ const GatewayOverviewPage: React.FC = () => {
       testId: 'gateway-count-services',
     });
   }
-  if (policyInForce !== undefined) {
+  // Last, after the four the All resources page has a tab for: this one is a
+  // page of its own. The name is the one the rest of the dashboard gives a
+  // provider profile, and the row leads to the page that carries it.
+  if (profileCount !== undefined) {
     inventory.push({
-      label: 'Global policy',
-      // A numeral where there is none, so the column of counts beside it
-      // reads as one column. There is at most one global policy, so the
-      // other case is not a figure but what that one policy is doing.
-      value: policyInForce ? 'In force' : 0,
-      to: '/global-policy',
-      testId: 'gateway-count-global-policy',
-    });
-  }
-  if (settingCount !== undefined) {
-    inventory.push({
-      label: 'Custom settings',
-      value: settingCount,
-      to: '/settings',
-      testId: 'gateway-count-settings',
+      label: 'Identity providers',
+      value: profileCount,
+      to: '/provider-profiles',
+      testId: 'gateway-count-provider-profiles',
     });
   }
 
@@ -514,7 +487,7 @@ const GatewayOverviewPage: React.FC = () => {
           Gateway
         </Title>
         <Content component="p">
-          Admin view of status, inventory, and alerts.
+          Admin view of status, resources, and alerts.
         </Content>
       </PageSection>
       <PageSection>
@@ -552,7 +525,7 @@ const GatewayOverviewPage: React.FC = () => {
           {showInventory && (
             <GridItem lg={3} md={6}>
               <Card data-testid="gateway-counts">
-                <CardTitle component="h2">Inventory</CardTitle>
+                <CardTitle component="h2">All resources</CardTitle>
                 {/* Rows rather than tiles, after PatternFly's own dashboard
                     inventory card. A column rather than a band across the
                     page: a figure right-aligned at the far edge of a
@@ -560,7 +533,7 @@ const GatewayOverviewPage: React.FC = () => {
                     counts. */}
                 <CardBody>
                   <DataList
-                    aria-label="Inventory"
+                    aria-label="All resources"
                     isCompact
                     gridBreakpoint="none"
                   >

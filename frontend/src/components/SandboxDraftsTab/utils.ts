@@ -56,7 +56,9 @@ export const chunkStatusIcon = (
 // The statuses `openshell draft get --status` filters by. The empty one is no
 // filter at all.
 export const CHUNK_STATUS_FILTERS = [
-  { value: '', label: 'All' },
+  // Shut, the toggle is the only thing saying what is being filtered, so the
+  // one option that is not itself a status has to name it.
+  { value: '', label: 'All statuses' },
   { value: 'pending', label: 'Pending' },
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },

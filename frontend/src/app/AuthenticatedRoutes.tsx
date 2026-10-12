@@ -38,6 +38,9 @@ const WorkspaceCrumbs: React.FC<{ workspace: string; leaf?: string }> = ({
   leaf,
 }) => {
   const { t } = useI18n('common');
+  // Flat children, never a fragment: Breadcrumb puts the divider on each
+  // child after the first with Children.map, which does not look inside a
+  // fragment, so grouping the deeper two left both of them without one.
   return (
     <PageBreadcrumb>
       <Breadcrumb>
@@ -48,20 +51,16 @@ const WorkspaceCrumbs: React.FC<{ workspace: string; leaf?: string }> = ({
             </Link>
           )}
         />
-        {leaf ? (
-          <>
-            <BreadcrumbItem
-              render={({ className }) => (
-                <Link className={className} to={`/workspaces/${workspace}`}>
-                  {workspace}
-                </Link>
-              )}
-            />
-            <BreadcrumbItem isActive>{leaf}</BreadcrumbItem>
-          </>
-        ) : (
-          <BreadcrumbItem isActive>{workspace}</BreadcrumbItem>
+        {leaf && (
+          <BreadcrumbItem
+            render={({ className }) => (
+              <Link className={className} to={`/workspaces/${workspace}`}>
+                {workspace}
+              </Link>
+            )}
+          />
         )}
+        <BreadcrumbItem isActive>{leaf ?? workspace}</BreadcrumbItem>
       </Breadcrumb>
     </PageBreadcrumb>
   );

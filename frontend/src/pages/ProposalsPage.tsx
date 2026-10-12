@@ -40,38 +40,39 @@ const byUrgency = (a: DraftSandboxSummary, b: DraftSandboxSummary) => {
 };
 
 const columns: ResourceTableColumn<DraftSandboxSummary>[] = [
+  // The two names say which sandbox the row is about; neither is where the
+  // row leads. A row with three links in it offers three ways out and says
+  // nothing about which one does the thing the page is for.
   {
     title: 'Workspace',
     modifier: 'nowrap',
-    render: (entry) => (
-      <Link to={`/workspaces/${encodeURIComponent(entry.workspace)}`}>
-        {entry.workspace}
-      </Link>
-    ),
+    render: (entry) => entry.workspace,
   },
   {
     title: 'Sandbox',
     modifier: 'nowrap',
+    render: (entry) => entry.sandboxName,
+  },
+  {
+    title: 'Pending',
+    // The count is the row's one link: what is waiting, leading to where it
+    // is decided. An inbox that could not be read is not an inbox with
+    // nothing in it, and it leads to the same place — the tab is where the
+    // reader finds out what the summary could not say.
     render: (entry) => (
       <Link
         to={draftsTabPath(entry)}
         data-testid={`proposals-link-${entry.workspace}/${entry.sandboxName}`}
       >
-        {entry.sandboxName}
+        {entry.unavailable ? (
+          <Label color="grey" isCompact>
+            Could not be read
+          </Label>
+        ) : (
+          entry.pendingCount
+        )}
       </Link>
     ),
-  },
-  {
-    title: 'Pending',
-    // An inbox that could not be read is not an inbox with nothing in it.
-    render: (entry) =>
-      entry.unavailable ? (
-        <Label color="grey" isCompact>
-          Could not be read
-        </Label>
-      ) : (
-        entry.pendingCount
-      ),
   },
   {
     title: 'Security',

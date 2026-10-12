@@ -196,10 +196,15 @@ describe('ProposalsPage', () => {
     );
     renderPage();
 
-    expect(screen.getByTestId('proposals-link-team-a/agent')).toHaveAttribute(
+    const link = screen.getByTestId('proposals-link-team-a/agent');
+    expect(link).toHaveAttribute(
       'href',
       '/workspaces/team-a/sandboxes/agent?tab=proposals',
     );
+    // The count is the row's one link. The two names beside it say which
+    // sandbox the row is about and lead nowhere.
+    expect(link).toHaveTextContent('1');
+    expect(screen.getAllByRole('link')).toEqual([link]);
   });
 
   // One workspace that failed is a gap in the list, not the end of it.
