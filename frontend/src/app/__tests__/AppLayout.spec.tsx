@@ -19,6 +19,13 @@ jest.mock('../../api/auth', () => ({
 jest.mock('../../api/draftSummary', () => ({
   useAllWorkspacesDraftSummary: () => ({ totalPending: 0 }),
 }));
+// The shell counts sandboxes and workspaces for their nav badges. None here.
+jest.mock('../../api/allWorkspaces', () => ({
+  useAllSandboxes: () => ({ data: [] }),
+}));
+jest.mock('../../api/workspaces', () => ({
+  useWorkspaces: () => ({ data: [] }),
+}));
 jest.mock('../theme', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: jest.fn() }),
 }));
@@ -130,6 +137,9 @@ describe('AppLayout role badge', () => {
     mockUser({ roles: ['user'] });
     renderShell('/workspaces', page);
 
+    expect(screen.getByTestId('role-badge-region')).toHaveTextContent(
+      /Role:\s*Standard user/,
+    );
     expect(screen.getByTestId('role-badge')).toHaveTextContent('Standard user');
   });
 
@@ -137,6 +147,9 @@ describe('AppLayout role badge', () => {
     mockUser({ roles: ['admin'] });
     renderShell('/workspaces', page);
 
+    expect(screen.getByTestId('role-badge-region')).toHaveTextContent(
+      /Role:\s*Platform admin/,
+    );
     expect(screen.getByTestId('role-badge')).toHaveTextContent(
       'Platform admin',
     );

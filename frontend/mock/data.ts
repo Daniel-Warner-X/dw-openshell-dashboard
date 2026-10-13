@@ -488,8 +488,24 @@ export const draftPolicy = {
 
 export const draftSummary = {
   sandboxes: [
-    { workspace: 'default', sandboxName: 'code-assistant', pendingCount: 2, hasSecurityFlags: false, latestDraftMs: now - minutes(20) },
-    { workspace: 'ml-training', sandboxName: 'training-run-42', pendingCount: 1, hasSecurityFlags: true, latestDraftMs: now - minutes(10) },
+    {
+      workspace: 'default',
+      sandboxName: 'code-assistant',
+      pendingCount: 2,
+      hasSecurityFlags: false,
+      latestDraftMs: now - minutes(20),
+      latestRationale:
+        'Model weights download from Hugging Face Hub.',
+    },
+    {
+      workspace: 'ml-training',
+      sandboxName: 'training-run-42',
+      pendingCount: 1,
+      hasSecurityFlags: true,
+      latestDraftMs: now - minutes(10),
+      latestRationale:
+        'The sandbox attempted to install packages from PyPI. Allowing access to pypi.org enables pip install.',
+    },
   ],
   totalPending: 3,
 };
@@ -497,13 +513,29 @@ export const draftSummary = {
 export const workspaceDraftSummary: Record<string, object> = {
   default: {
     sandboxes: [
-      { workspace: 'default', sandboxName: 'code-assistant', pendingCount: 2, hasSecurityFlags: false, latestDraftMs: now - minutes(20) },
+      {
+        workspace: 'default',
+        sandboxName: 'code-assistant',
+        pendingCount: 2,
+        hasSecurityFlags: false,
+        latestDraftMs: now - minutes(20),
+        latestRationale:
+          'Model weights download from Hugging Face Hub.',
+      },
     ],
     totalPending: 2,
   },
   'ml-training': {
     sandboxes: [
-      { workspace: 'ml-training', sandboxName: 'training-run-42', pendingCount: 1, hasSecurityFlags: true, latestDraftMs: now - minutes(10) },
+      {
+        workspace: 'ml-training',
+        sandboxName: 'training-run-42',
+        pendingCount: 1,
+        hasSecurityFlags: true,
+        latestDraftMs: now - minutes(10),
+        latestRationale:
+          'The sandbox attempted to install packages from PyPI. Allowing access to pypi.org enables pip install.',
+      },
     ],
     totalPending: 1,
   },

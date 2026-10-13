@@ -15,18 +15,16 @@ import { useNavigate } from 'react-router-dom';
 
 import {
   useAllProviders,
-  useAllSandboxes,
   useAllServices,
   useAllTemplates,
 } from '../api/allWorkspaces';
 import { useFeatureFlags } from '../api/auth';
 import LabelsList from '../components/LabelsList';
-import PhaseLabel from '../components/PhaseLabel';
 import ResourceTable from '../components/ResourceTable';
 import type { ResourceTableColumn } from '../components/ResourceTable';
 import ServiceEndpointsTable from '../components/ServiceEndpointsTable';
 import { formatAge } from '../utils/formatters';
-import type { Provider, Sandbox, SandboxTemplate } from '../types';
+import type { Provider, SandboxTemplate } from '../types';
 
 type AllWorkspacesPageProps = {
   onSelectWorkspace?: (workspace: string) => void;
@@ -59,11 +57,11 @@ const ImageReference: React.FC<{ image?: string }> = ({ image }) =>
     <>-</>
   );
 
-// The sandboxes, providers, templates and service endpoints of every
-// workspace on the gateway: `--all-workspaces` on the CLI's four lists. The
-// gateway answers these for platform admins only, and its refusal is shown as
-// it is. Each row names its workspace and leads to the workspace-scoped page
-// for the resource, which is where it is acted on.
+// The providers, templates and service endpoints of every workspace on the
+// gateway: `--all-workspaces` on those three CLI lists. Sandboxes are a page
+// of their own. The gateway answers these for platform admins only, and its
+// refusal is shown as it is. Each row names its workspace and leads to the
+// workspace-scoped page for the resource, which is where it is acted on.
 const AllWorkspacesPage: React.FC<AllWorkspacesPageProps> = ({
   onSelectWorkspace,
   onSelectSandbox,
@@ -71,10 +69,8 @@ const AllWorkspacesPage: React.FC<AllWorkspacesPageProps> = ({
 }) => {
   const navigate = useNavigate();
   const features = useFeatureFlags();
-  const [activeTab, setActiveTab] = useState<string | number>('sandboxes');
-  const [sandboxSelector, setSandboxSelector] = useState('');
+  const [activeTab, setActiveTab] = useState<string | number>('providers');
   const [templateSelector, setTemplateSelector] = useState('');
-  const sandboxes = useAllSandboxes(sandboxSelector || undefined);
   const providers = useAllProviders();
   const templates = useAllTemplates(templateSelector || undefined);
   const services = useAllServices({ enabled: features.services });
@@ -108,50 +104,6 @@ const AllWorkspacesPage: React.FC<AllWorkspacesPageProps> = ({
       </Button>
     ),
   });
-
-  const sandboxColumns: ResourceTableColumn<Sandbox>[] = [
-    workspaceColumn<Sandbox>(),
-    {
-      title: 'Name',
-      modifier: 'nowrap',
-      render: (sandbox) => (
-        <Button
-          variant="link"
-          isInline
-          onClick={() =>
-            selectSandbox(workspaceOf(sandbox), sandbox.metadata.name)
-          }
-          data-testid={`sandbox-link-${scopedName(sandbox)}`}
-        >
-          {sandbox.metadata.name}
-        </Button>
-      ),
-    },
-    {
-      title: 'Status',
-      render: (sandbox) => (
-        <PhaseLabel
-          phase={sandbox.status.phase}
-          exitCode={sandbox.status.exitCode}
-        />
-      ),
-    },
-    {
-      title: 'Image',
-      modifier: 'truncate',
-      render: (sandbox) => <ImageReference image={sandbox.spec.image} />,
-    },
-    {
-      title: 'Labels',
-      render: (sandbox) => (
-        <LabelsList labels={sandbox.metadata.labels} numLabels={2} />
-      ),
-    },
-    {
-      title: 'Age',
-      render: (sandbox) => formatAge(sandbox.metadata.createdAtMs),
-    },
-  ];
 
   const providerColumns: ResourceTableColumn<Provider>[] = [
     workspaceColumn<Provider>(),
@@ -233,11 +185,11 @@ const AllWorkspacesPage: React.FC<AllWorkspacesPageProps> = ({
     <>
       <PageSection>
         <Title headingLevel="h1" className="pf-v6-u-mb-sm">
-          All resources
+          Resources
         </Title>
         <Content component="p">
-          Sandboxes, providers, templates and services across every workspace on
-          the gateway.
+          Providers, templates and services across every workspace on the
+          gateway.
         </Content>
       </PageSection>
       <PageSection>
@@ -246,30 +198,6 @@ const AllWorkspacesPage: React.FC<AllWorkspacesPageProps> = ({
           onSelect={(_event, key) => setActiveTab(key)}
           aria-label="Resources in all workspaces"
         >
-          <Tab
-            eventKey="sandboxes"
-            title={
-              <TabTitleText>Sandboxes {count(sandboxes.data)}</TabTitleText>
-            }
-            data-testid="all-tab-sandboxes"
-          >
-            <TabPanel>
-              <ResourceTable
-                title="Sandboxes"
-                testId="all-sandboxes"
-                query={sandboxes}
-                columns={sandboxColumns}
-                rowKey={scopedName}
-                filterText={scopedName}
-                filterPlaceholder="Filter by workspace or name"
-                emptyBody="No workspace on this gateway has a sandbox."
-                labelSelector={{
-                  value: sandboxSelector,
-                  onApply: setSandboxSelector,
-                }}
-              />
-            </TabPanel>
-          </Tab>
           <Tab
             eventKey="providers"
             title={

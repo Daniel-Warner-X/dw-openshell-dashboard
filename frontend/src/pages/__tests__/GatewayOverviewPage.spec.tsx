@@ -12,50 +12,31 @@ jest.mock('../../api/gateway', () => ({
 jest.mock('../../api/allWorkspaces', () => ({
   useAllSandboxes: jest.fn(),
   useAllProviders: jest.fn(),
-  useAllTemplates: jest.fn(),
-  useAllServices: jest.fn(),
 }));
-jest.mock('../../api/workspaces', () => ({ useWorkspaces: jest.fn() }));
 jest.mock('../../api/policy', () => ({ useGlobalPolicy: jest.fn() }));
-jest.mock('../../api/providers', () => ({
-  PLATFORM_PROFILE_SCOPE: '@platform',
-  useProviderProfiles: jest.fn(),
-}));
 jest.mock('../../api/settings', () => ({ useGlobalSettings: jest.fn() }));
 jest.mock('../../api/draftSummary', () => ({
   useAllWorkspacesDraftSummary: jest.fn(),
 }));
 jest.mock('../../api/auth', () => ({
   useFeatureFlags: () => ({
-    services: true,
     globalPolicy: true,
     settings: true,
     draftPolicy: true,
   }),
 }));
 
-import {
-  useAllProviders,
-  useAllSandboxes,
-  useAllServices,
-  useAllTemplates,
-} from '../../api/allWorkspaces';
+import { useAllProviders, useAllSandboxes } from '../../api/allWorkspaces';
 import { useAllWorkspacesDraftSummary } from '../../api/draftSummary';
 import { useGatewayCompatibility, useGatewayInfo } from '../../api/gateway';
 import { useGlobalPolicy } from '../../api/policy';
-import { useProviderProfiles } from '../../api/providers';
 import { useGlobalSettings } from '../../api/settings';
-import { useWorkspaces } from '../../api/workspaces';
 
 const mockUseGatewayInfo = useGatewayInfo as jest.Mock;
 const mockUseGatewayCompatibility = useGatewayCompatibility as jest.Mock;
 const mockUseAllSandboxes = useAllSandboxes as jest.Mock;
 const mockUseAllProviders = useAllProviders as jest.Mock;
-const mockUseAllTemplates = useAllTemplates as jest.Mock;
-const mockUseAllServices = useAllServices as jest.Mock;
-const mockUseWorkspaces = useWorkspaces as jest.Mock;
 const mockUseGlobalPolicy = useGlobalPolicy as jest.Mock;
-const mockUseProviderProfiles = useProviderProfiles as jest.Mock;
 const mockUseGlobalSettings = useGlobalSettings as jest.Mock;
 const mockUseDraftSummary = useAllWorkspacesDraftSummary as jest.Mock;
 
@@ -64,19 +45,19 @@ const answered = (data: unknown) => ({
   isError: false,
   data,
 });
-const refused = () => ({
-  isLoading: false,
-  isError: true,
-  error: new Error("role 'openshell-admin' required"),
-  data: undefined,
-});
 
-const sandbox = (name: string, phase: Sandbox['status']['phase']): Sandbox => ({
+const minutesAgo = (minutes: number) => Date.now() - minutes * 60_000;
+
+const sandbox = (
+  name: string,
+  phase: Sandbox['status']['phase'],
+  createdAtMs = minutesAgo(45),
+): Sandbox => ({
   metadata: {
     id: name,
     name,
     workspace: 'team-a',
-    createdAtMs: 0,
+    createdAtMs,
     resourceVersion: 1,
   },
   spec: { image: 'example.com/base:latest' },
@@ -87,12 +68,8 @@ const sandbox = (name: string, phase: Sandbox['status']['phase']): Sandbox => ({
 // test overrides what it is about.
 const answerEverythingElse = () => {
   mockUseGatewayCompatibility.mockReturnValue(answered(undefined));
-  mockUseWorkspaces.mockReturnValue(answered([{}, {}]));
   mockUseAllSandboxes.mockReturnValue(answered([sandbox('agent', 'READY')]));
   mockUseAllProviders.mockReturnValue(answered([{}]));
-  mockUseProviderProfiles.mockReturnValue(answered([{}, {}]));
-  mockUseAllTemplates.mockReturnValue(answered([]));
-  mockUseAllServices.mockReturnValue(answered([]));
   mockUseGlobalPolicy.mockReturnValue(answered({ activeVersion: 0 }));
   mockUseGlobalSettings.mockReturnValue(answered({ settings: [] }));
   mockUseDraftSummary.mockReturnValue({
@@ -112,6 +89,12 @@ const renderPage = () =>
   );
 
 describe('GatewayOverviewPage', () => {
+  // Fixed so Timestamp datetime assertions do not drift between the fixture
+  // and the expectation.
+  const quietProposedAt = minutesAgo(10);
+  const flaggedProposedAt = minutesAgo(5);
+  const builderCreatedAt = minutesAgo(45);
+
   beforeEach(() => {
     jest.clearAllMocks();
     answerEverythingElse();
@@ -165,15 +148,20 @@ describe('GatewayOverviewPage', () => {
     );
     renderPage();
 
-    const strip = within(screen.getByTestId('gateway-status-card'));
-    expect(strip.queryByText('HEALTHY')).not.toBeInTheDocument();
-    expect(strip.getByTestId('gateway-version')).toHaveTextContent('0.1.2');
-    expect(strip.getByTestId('dashboard-version')).toHaveTextContent(
-      APP_VERSION,
+    const strip = screen.getByTestId('gateway-status-card');
+    expect(within(strip).queryByText('HEALTHY')).not.toBeInTheDocument();
+    expect(strip).toHaveTextContent(
+      `Gateway version: 0.1.2Dashboard version: ${APP_VERSION}Compatibility: Supported (0.1.0 to 0.1.2)`,
     );
-    expect(strip.getByTestId('gateway-compatibility')).toHaveTextContent(
-      'Supported (0.1.0 to 0.1.2)',
+    expect(within(strip).getByTestId('gateway-version')).toHaveTextContent(
+      'Gateway version: 0.1.2',
     );
+    expect(within(strip).getByTestId('dashboard-version')).toHaveTextContent(
+      `Dashboard version: ${APP_VERSION}`,
+    );
+    expect(
+      within(strip).getByTestId('gateway-compatibility'),
+    ).toHaveTextContent('Compatibility: Supported (0.1.0 to 0.1.2)');
   });
 
   it('says so when there is no verdict to report', () => {
@@ -187,73 +175,9 @@ describe('GatewayOverviewPage', () => {
     );
   });
 
-  // Each count leads to the page it was read from.
-  it('counts what is on the gateway', () => {
-    mockUseGatewayInfo.mockReturnValue(
-      answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
-    );
-    mockUseAllTemplates.mockReturnValue(answered([{}, {}, {}]));
-    renderPage();
-
-    const tile = (testId: string) =>
-      within(screen.getByTestId(testId)).getByRole('link');
-    expect(tile('gateway-count-workspaces')).toHaveTextContent('2');
-    expect(tile('gateway-count-workspaces')).toHaveAttribute(
-      'href',
-      '/workspaces',
-    );
-    expect(tile('gateway-count-sandboxes')).toHaveTextContent('1');
-    expect(tile('gateway-count-templates')).toHaveTextContent('3');
-    expect(tile('gateway-count-services')).toHaveTextContent('0');
-    // The platform's provider profiles, which is what the Identity providers
-    // page lists — not the providers made from them.
-    expect(tile('gateway-count-provider-profiles')).toHaveTextContent('2');
-    expect(tile('gateway-count-provider-profiles')).toHaveAttribute(
-      'href',
-      '/provider-profiles',
-    );
-  });
-
-  // The four that are counted across workspaces are the four the All
-  // resources page has a tab for, in its order; the profiles are a page of
-  // their own and come after them.
-  it('counts them in the order the All resources page lists them', () => {
-    mockUseGatewayInfo.mockReturnValue(
-      answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
-    );
-    renderPage();
-
-    // The label is beside the figure, not in the link; the link names both.
-    const rows = within(screen.getByTestId('gateway-counts'))
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('aria-label'));
-    expect(rows).toEqual([
-      'Workspaces: 2',
-      'Sandboxes: 1',
-      'Templates: 0',
-      'Services: 0',
-      'Identity providers: 2',
-    ]);
-  });
-
-  // The four lists across workspaces are answered for platform admins only.
-  // A refusal is not a zero, so the tile is left out rather than made up.
-  it('leaves out the count the gateway refused', () => {
-    mockUseGatewayInfo.mockReturnValue(
-      answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
-    );
-    mockUseAllTemplates.mockReturnValue(refused());
-    renderPage();
-
-    expect(screen.getByTestId('gateway-count-sandboxes')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('gateway-count-templates'),
-    ).not.toBeInTheDocument();
-  });
-
   // A gateway starts with a `default` workspace, so having workspaces is not
   // having been used.
-  it('walks through the flow instead of counting an empty gateway', () => {
+  it('walks through getting started on an empty gateway', () => {
     mockUseGatewayInfo.mockReturnValue(
       answered({ status: 'HEALTHY', gatewayVersion: '0.1.2' }),
     );
@@ -265,7 +189,6 @@ describe('GatewayOverviewPage', () => {
     expect(started.getByText('Create a workspace')).toBeInTheDocument();
     expect(started.getByText('Add a provider')).toBeInTheDocument();
     expect(started.getByText('Create a sandbox')).toBeInTheDocument();
-    expect(screen.queryByTestId('gateway-counts')).not.toBeInTheDocument();
   });
 
   it('raises what is worth doing something about, and nothing when all is well', () => {
@@ -274,31 +197,43 @@ describe('GatewayOverviewPage', () => {
     );
     renderPage();
     expect(screen.queryByTestId('gateway-attention')).not.toBeInTheDocument();
-    // The column beside the health card says so rather than going blank.
+    // The row under the versions says so rather than going blank.
     expect(screen.getByTestId('gateway-all-clear')).toHaveTextContent(
       'Nothing needs attention',
     );
 
     mockUseAllSandboxes.mockReturnValue(
-      answered([sandbox('agent', 'READY'), sandbox('builder', 'ERROR')]),
+      answered([
+        sandbox('agent', 'READY'),
+        sandbox('builder', 'ERROR', builderCreatedAt),
+      ]),
     );
     mockUseAllProviders.mockReturnValue(answered([]));
     renderPage();
 
     const attention = within(screen.getAllByTestId('gateway-attention')[0]);
-    // The sandbox in error is named and leads to its own log, which is the
-    // only thing that says why it is in error. A count would have led to a
-    // list the reader then has to search.
-    expect(attention.getByText('builder')).toHaveAttribute(
+    // The sandbox in error is named as workspace/sandbox and leads to its
+    // own log, which is the only thing that says why it is in error. A count
+    // would have led to a list the reader then has to search.
+    expect(attention.getByText('team-a/builder')).toHaveAttribute(
       'href',
       '/workspaces/team-a/sandboxes/builder?tab=logs',
     );
-    // The badge beside it says which of the card's kinds it is, which is all
-    // a row says about itself now that the sentence under it is gone.
+    expect(attention.getByText(/Provisioning failed/)).toBeInTheDocument();
+    expect(
+      attention
+        .getByTestId('errored-team-a/builder-age')
+        .querySelector('time'),
+    ).toHaveAttribute('datetime', new Date(builderCreatedAt).toISOString());
+    // The badge beside it says which of the card's kinds it is.
     expect(attention.getByText('Sandbox error')).toBeInTheDocument();
     expect(
       attention.getByText(/^No providers/, { selector: 'a' }),
     ).toBeInTheDocument();
+    expect(
+      attention.getByText(/no credentials to reach a model/),
+    ).toBeInTheDocument();
+    expect(attention.getByTestId('no-providers-age')).toHaveTextContent('-');
     // The second render is the one with something waiting; the all-clear
     // panel belongs to the first, which is still mounted beside it.
     expect(screen.getAllByTestId('gateway-all-clear')).toHaveLength(1);
@@ -320,33 +255,59 @@ describe('GatewayOverviewPage', () => {
           sandboxName: 'quiet',
           pendingCount: 1,
           hasSecurityFlags: false,
-          latestDraftMs: 10,
+          // Same instant the sandbox Proposals tab shows in Proposed.
+          latestDraftMs: quietProposedAt,
+          latestRationale:
+            'The sandbox attempted to install packages from PyPI. Allowing access to pypi.org enables pip install.',
         },
         {
           workspace: 'team-b',
           sandboxName: 'flagged',
           pendingCount: 2,
           hasSecurityFlags: true,
-          latestDraftMs: 5,
+          latestDraftMs: flaggedProposedAt,
+          latestRationale: 'Model weights download from Hugging Face Hub.',
         },
       ],
       totalPending: 3,
     });
     mockUseAllSandboxes.mockReturnValue(
-      answered([sandbox('agent', 'READY'), sandbox('builder', 'ERROR')]),
+      answered([
+        sandbox('agent', 'READY'),
+        sandbox('builder', 'ERROR', builderCreatedAt),
+      ]),
     );
     renderPage();
 
     const card = within(screen.getByTestId('gateway-attention'));
     const rows = card.getAllByRole('link');
     // The one the prover flagged leads, whatever its age.
-    expect(rows[0]).toHaveTextContent('flagged');
+    expect(rows[0]).toHaveTextContent('team-b/flagged');
     expect(rows[0]).toHaveAttribute(
       'href',
       '/workspaces/team-b/sandboxes/flagged?tab=proposals',
     );
-    expect(rows[1]).toHaveTextContent('quiet');
-    expect(rows[2]).toHaveTextContent('builder');
+    expect(rows[1]).toHaveTextContent('team-a/quiet');
+    expect(rows[2]).toHaveTextContent('team-a/builder');
+    // Each proposal row carries the newest chunk's rationale under the link.
+    expect(
+      card.getByText('Model weights download from Hugging Face Hub.'),
+    ).toBeInTheDocument();
+    expect(
+      card.getByText(
+        'The sandbox attempted to install packages from PyPI. Allowing access to pypi.org enables pip install.',
+      ),
+    ).toBeInTheDocument();
+    // Proposal times are the Proposed column's createdAt of the newest chunk.
+    expect(
+      card.getByTestId('proposals-team-b/flagged-age').querySelector('time'),
+    ).toHaveAttribute('datetime', new Date(flaggedProposedAt).toISOString());
+    expect(
+      card.getByTestId('proposals-team-a/quiet-age').querySelector('time'),
+    ).toHaveAttribute('datetime', new Date(quietProposedAt).toISOString());
+    expect(
+      card.getByTestId('errored-team-a/builder-age').querySelector('time'),
+    ).toHaveAttribute('datetime', new Date(builderCreatedAt).toISOString());
     // Each row is badged with its kind: the two proposals, then the error.
     expect(card.getAllByText('Proposal')).toHaveLength(2);
     expect(card.getByText('Sandbox error')).toBeInTheDocument();
@@ -398,7 +359,7 @@ describe('GatewayOverviewPage', () => {
     expect(menu.getByText('All types (2)')).toBeInTheDocument();
     fireEvent.click(menu.getByText('Sandbox errors (1)'));
 
-    expect(card.getByText('builder')).toBeInTheDocument();
+    expect(card.getByText('team-a/builder')).toBeInTheDocument();
     expect(card.queryByText(/^No providers/)).not.toBeInTheDocument();
     expect(card.getByTestId('gateway-attention-count')).toHaveTextContent('1');
   });

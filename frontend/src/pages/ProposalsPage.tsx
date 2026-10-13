@@ -40,19 +40,6 @@ const byUrgency = (a: DraftSandboxSummary, b: DraftSandboxSummary) => {
 };
 
 const columns: ResourceTableColumn<DraftSandboxSummary>[] = [
-  // The two names say which sandbox the row is about; neither is where the
-  // row leads. A row with three links in it offers three ways out and says
-  // nothing about which one does the thing the page is for.
-  {
-    title: 'Workspace',
-    modifier: 'nowrap',
-    render: (entry) => entry.workspace,
-  },
-  {
-    title: 'Sandbox',
-    modifier: 'nowrap',
-    render: (entry) => entry.sandboxName,
-  },
   {
     title: 'Pending',
     // The count is the row's one link: what is waiting, leading to where it
@@ -73,6 +60,19 @@ const columns: ResourceTableColumn<DraftSandboxSummary>[] = [
         )}
       </Link>
     ),
+  },
+  // The two names say which sandbox the row is about; neither is where the
+  // row leads. A row with three links in it offers three ways out and says
+  // nothing about which one does the thing the page is for.
+  {
+    title: 'Workspace',
+    modifier: 'nowrap',
+    render: (entry) => entry.workspace,
+  },
+  {
+    title: 'Sandbox',
+    modifier: 'nowrap',
+    render: (entry) => entry.sandboxName,
   },
   {
     title: 'Security',

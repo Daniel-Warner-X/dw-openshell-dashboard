@@ -2,13 +2,14 @@ export default {
   nav: {
     gateway: 'Gateway',
     workspaces: 'Workspaces',
-    // The page lists sandboxes, providers, templates and services across
-    // every workspace — resources, not workspaces, which is the question
-    // "what is the difference between Workspaces and All workspaces?" that
-    // the old label invited.
-    allWorkspaces: 'All resources',
+    // Providers, templates and services across every workspace — resources,
+    // not workspaces, which is the question "what is the difference between
+    // Workspaces and All workspaces?" that the old label invited. Sandboxes
+    // are their own entry.
+    allWorkspaces: 'Resources',
     proposals: 'Proposals',
-    providerProfiles: 'Identity providers',
+    sandboxes: 'Sandboxes',
+    providerProfiles: 'Providers',
     globalPolicy: 'Global policy',
     settings: 'Settings',
     primary: 'Primary navigation',
@@ -28,6 +29,8 @@ export default {
     help: 'Help',
     documentation: 'Documentation',
     about: 'About',
+    // What the badge beside it is the value of — same form as gatewayHealth.label.
+    roleLabel: 'Role:',
     roleAdmin: 'Platform admin',
     roleUser: 'Standard user',
     userFallback: 'User',

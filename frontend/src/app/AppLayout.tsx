@@ -31,9 +31,11 @@ import { Link, useLocation } from 'react-router-dom';
 
 import openshellLogo from '~/assets/openshell-logo.svg';
 import openshellLogoDark from '~/assets/openshell-logo-dark.svg';
+import { useAllSandboxes } from '../api/allWorkspaces';
 import { useCurrentUser, useFeatureFlags } from '../api/auth';
 import { useAllWorkspacesDraftSummary } from '../api/draftSummary';
 import { useUserRole } from '../api/rbac';
+import { useWorkspaces } from '../api/workspaces';
 import CurrentUserModal from '../components/CurrentUserModal';
 import GatewayCompatibilityAlert from '../components/GatewayCompatibilityAlert';
 import GatewayStatusIndicator from '../components/GatewayStatusIndicator';
@@ -54,6 +56,7 @@ type NavEntry = {
     | 'nav.gateway'
     | 'nav.workspaces'
     | 'nav.proposals'
+    | 'nav.sandboxes'
     | 'nav.allWorkspaces'
     | 'nav.providerProfiles'
     | 'nav.globalPolicy'
@@ -74,6 +77,12 @@ const navGroups: { id: NavGroupId }[] = [
 const navEntries: NavEntry[] = [
   { path: '/gateway', labelKey: 'nav.gateway', adminOnly: true },
   { path: '/workspaces', labelKey: 'nav.workspaces', group: 'workspaces' },
+  {
+    path: '/sandboxes',
+    labelKey: 'nav.sandboxes',
+    group: 'workspaces',
+    adminOnly: true,
+  },
   {
     path: '/proposals',
     labelKey: 'nav.proposals',
@@ -130,6 +139,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { totalPending: pendingProposals } = useAllWorkspacesDraftSummary(
     features.draftPolicy && isPlatformAdmin,
   );
+  // How many sandboxes the gateway has, on the Sandboxes entry. The unfiltered
+  // all-workspaces list — the same query the Sandboxes page reads when no
+  // label selector is set — so an admin looking at that list is not polling
+  // it twice. A platform admin only: the gateway refuses the list to anyone
+  // else, and the shell is mounted on every page.
+  const { data: allSandboxes } = useAllSandboxes(undefined, {
+    enabled: isPlatformAdmin,
+  });
+  const sandboxCount = allSandboxes?.length ?? 0;
+  // How many workspaces the signed-in user can see, on the Workspaces entry.
+  // The same unfiltered list the Workspaces page reads, so looking at that
+  // list is not a second poll. Unlike the sandboxes count this is for
+  // everyone: the gateway answers each user with the workspaces they are in.
+  const { data: workspaces } = useWorkspaces();
+  const workspaceCount = workspaces?.length ?? 0;
 
   const masthead = (
     <Masthead
@@ -278,6 +302,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {entry.path === '/proposals' && pendingProposals > 0 && (
         <Badge isRead className="pf-v6-u-ml-sm" data-testid="proposals-badge">
           {pendingProposals}
+        </Badge>
+      )}
+      {entry.path === '/workspaces' && workspaceCount > 0 && (
+        <Badge isRead className="pf-v6-u-ml-sm" data-testid="workspaces-badge">
+          {workspaceCount}
+        </Badge>
+      )}
+      {entry.path === '/sandboxes' && sandboxCount > 0 && (
+        <Badge isRead className="pf-v6-u-ml-sm" data-testid="sandboxes-badge">
+          {sandboxCount}
         </Badge>
       )}
     </NavItem>

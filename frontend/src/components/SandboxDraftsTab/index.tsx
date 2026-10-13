@@ -34,7 +34,11 @@ import DraftChunkRow from './DraftChunkRow';
 import DraftHistorySection from './DraftHistorySection';
 import EditDraftModal from './EditDraftModal';
 import { useDraftActions } from './useDraftActions';
-import { CHUNK_STATUS_FILTERS, pendingApprovals } from './utils';
+import {
+  approveOutlineStyle,
+  CHUNK_STATUS_FILTERS,
+  pendingApprovals,
+} from './utils';
 import type { ApiError } from '../../api/client';
 import type { ApproveAllResult, PolicyChunk } from '../../types';
 
@@ -233,10 +237,7 @@ const SandboxDraftsTab: React.FC<SandboxDraftsTabProps> = ({
                       screen after that, so the question sits out of the way
                       of them, in the corner of the panel. */}
                   <FlexItem>
-                    <Popover
-                      headerContent="Where this comes from"
-                      bodyContent="An LLM-generated analysis of the activity that generated the proposals."
-                    >
+                    <Popover bodyContent="An LLM-generated analysis of the activity that generated the proposals.">
                       <Button
                         variant="plain"
                         isInline
@@ -296,6 +297,8 @@ const SandboxDraftsTab: React.FC<SandboxDraftsTabProps> = ({
                 {!isGlobalPolicy && (
                   <ToolbarItem>
                     <Button
+                      variant="secondary"
+                      style={approveOutlineStyle}
                       onClick={() =>
                         actions.approveAll.mutate(
                           { includeSecurityFlagged: includeFlagged, approvals },

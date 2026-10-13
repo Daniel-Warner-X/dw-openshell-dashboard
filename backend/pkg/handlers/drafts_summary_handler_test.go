@@ -107,18 +107,24 @@ func TestWorkspaceDraftSummary(t *testing.T) {
 			sandboxes: sandboxesNamed("team-a", "busy", "quiet", "flagged"),
 			chunks: map[string][]openshell.PolicyChunk{
 				"team-a/busy": {
-					{ID: "c1", Status: "pending", CreatedAt: newer},
-					{ID: "c2", Status: "pending", CreatedAt: older},
+					{ID: "c1", Status: "pending", CreatedAt: newer, Rationale: "allow pypi.org for pip"},
+					{ID: "c2", Status: "pending", CreatedAt: older, Rationale: "older proposal"},
 				},
 				"team-a/flagged": {
-					{ID: "c3", Status: "pending", CreatedAt: older, SecurityNotes: "wildcard host"},
+					{ID: "c3", Status: "pending", CreatedAt: older, SecurityNotes: "wildcard host", Rationale: "broad egress"},
 				},
 			},
 			want: models.DraftSummary{
 				TotalPending: 3,
 				Sandboxes: []models.DraftSandboxSummary{
-					{Workspace: "team-a", SandboxName: "busy", PendingCount: 2, LatestDraftMs: newer.UnixMilli()},
-					{Workspace: "team-a", SandboxName: "flagged", PendingCount: 1, LatestDraftMs: older.UnixMilli(), HasSecurityFlags: true},
+					{
+						Workspace: "team-a", SandboxName: "busy", PendingCount: 2,
+						LatestDraftMs: newer.UnixMilli(), LatestRationale: "allow pypi.org for pip",
+					},
+					{
+						Workspace: "team-a", SandboxName: "flagged", PendingCount: 1,
+						LatestDraftMs: older.UnixMilli(), HasSecurityFlags: true, LatestRationale: "broad egress",
+					},
 				},
 			},
 			wantReads: []draftRead{

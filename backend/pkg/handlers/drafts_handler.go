@@ -211,8 +211,17 @@ func (h *DraftsHandler) pendingDrafts(ctx context.Context, workspace, name strin
 		if chunk.SecurityNotes != "" {
 			entry.HasSecurityFlags = true
 		}
-		if !chunk.CreatedAt.IsZero() && chunk.CreatedAt.UnixMilli() > entry.LatestDraftMs {
-			entry.LatestDraftMs = chunk.CreatedAt.UnixMilli()
+		if chunk.CreatedAt.IsZero() {
+			// No creation time to order by: keep the first rationale we see.
+			if entry.LatestRationale == "" {
+				entry.LatestRationale = chunk.Rationale
+			}
+			continue
+		}
+		createdMs := chunk.CreatedAt.UnixMilli()
+		if createdMs > entry.LatestDraftMs {
+			entry.LatestDraftMs = createdMs
+			entry.LatestRationale = chunk.Rationale
 		}
 	}
 	return entry

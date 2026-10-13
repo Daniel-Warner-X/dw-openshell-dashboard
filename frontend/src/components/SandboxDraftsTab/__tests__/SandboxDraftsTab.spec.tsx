@@ -327,15 +327,24 @@ describe('SandboxDraftsTab', () => {
   it('shows what the CLI and TUI show about a chunk', () => {
     renderTab();
     const row = screen.getByTestId('draft-chunk-c2');
-    expect(row).toHaveTextContent('flagged');
-    expect(row).toHaveTextContent('refined');
+    // The row carries the rule, its status, the denial count and the one
+    // label an approve-all acts on. The labels that only qualify a proposal
+    // are in the detail, not beside the name.
     expect(row).toHaveTextContent('3 times');
-    expect(screen.getByTestId('chunk-annotation-c2')).toHaveTextContent(
-      'review required',
-    );
+    expect(row).toHaveTextContent('flagged');
+    expect(row).not.toHaveTextContent('refined');
+    expect(row).not.toHaveTextContent('review required');
 
     fireEvent.click(within(row).getByRole('button', { name: 'Details' }));
     const details = screen.getByTestId('chunk-details-c2');
+    // The flag is said twice on purpose: in the table, and again against the
+    // note it was raised about.
+    expect(details).toHaveTextContent('flagged');
+    expect(details).toHaveTextContent('wildcard host');
+    expect(details).toHaveTextContent('refined');
+    expect(within(details).getByTestId('chunk-annotation-c2')).toHaveTextContent(
+      'review required',
+    );
     expect(details).toHaveTextContent('possible issues: private ip reach');
     expect(details).toHaveTextContent('3 connections (first');
     expect(details).toHaveTextContent('/ last');

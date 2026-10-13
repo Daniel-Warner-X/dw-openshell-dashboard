@@ -29,6 +29,7 @@ import {
   ProgressStep,
   ProgressStepper,
   Spinner,
+  Timestamp,
   Title,
 } from '@patternfly/react-core';
 import {
@@ -40,24 +41,17 @@ import {
 import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
 import { Link } from 'react-router-dom';
 
-import {
-  useAllProviders,
-  useAllSandboxes,
-  useAllServices,
-  useAllTemplates,
-} from '../api/allWorkspaces';
+import { useAllProviders, useAllSandboxes } from '../api/allWorkspaces';
 import { useFeatureFlags } from '../api/auth';
 import { useAllWorkspacesDraftSummary } from '../api/draftSummary';
 import { useGatewayCompatibility, useGatewayInfo } from '../api/gateway';
-import { PLATFORM_PROFILE_SCOPE, useProviderProfiles } from '../api/providers';
-import { useWorkspaces } from '../api/workspaces';
 import { APP_VERSION } from '../constants';
 import type {
   DraftSandboxSummary,
   GatewayCompatibility,
   GatewayExtensionKind,
+  Sandbox,
 } from '../types';
-
 // The BFF's verdict on the gateway, in a few words. The notice that explains
 // what an unsupported gateway does to the rest of the dashboard is the one
 // the app shell raises above every page; this only states where the gateway
@@ -108,9 +102,9 @@ const CapabilityList: React.FC<{ capabilities?: string[] }> = ({
   );
 
 // How many of something there are, or undefined when that cannot be said.
-// The four lists across workspaces are answered for platform admins only and
-// the gateway refuses everyone else (403), so a refusal, and a list that has
-// not arrived, must not be shown as a zero: the tile is left out instead.
+// The lists across workspaces are answered for platform admins only and the
+// gateway refuses everyone else (403), so a refusal, and a list that has not
+// arrived, must not be treated as a zero.
 const countOf = (query: {
   data?: unknown[];
   isError: boolean;
@@ -159,15 +153,63 @@ const ATTENTION_ICON: Record<AttentionType, React.ReactElement> = {
 };
 
 // One line of Needs attention: the thing it is about, named and badged with
-// its kind.
+// its kind, a sentence saying what is wrong with it, and when it happened.
 type AttentionItem = {
   key: string;
   type: AttentionType;
-  // The name of the thing, which is the link. A sandbox is named rather than
-  // counted: "3 sandboxes in error" is not something anybody can act on
-  // without first finding out which three.
+  // The name of the thing, which is the link. A sandbox is named as
+  // workspace/sandbox rather than counted: "3 sandboxes in error" is not
+  // something anybody can act on without first finding out which three.
   text: string;
+  // What the title means — a proposed rule's rationale, or why the sandbox
+  // is in error, or what is missing.
+  detail: string;
   to: string;
+  // When it was proposed or when the error landed, for the Timestamp at the
+  // end of the row. For proposals this is the newest pending chunk's
+  // createdAt — the same instant the sandbox Proposals tab shows in its
+  // Proposed column. Absent on rollup lines that are not about one sandbox.
+  atMs?: number;
+};
+
+// What to say under a proposal row: the newest chunk's own rationale when
+// the summary carried one, otherwise how many rules are waiting.
+const proposalDetail = (entry: DraftSandboxSummary): string => {
+  if (entry.unavailable) {
+    return 'Its proposal inbox could not be read, so what is waiting in it is not known.';
+  }
+  if (entry.latestRationale) {
+    return entry.latestRationale;
+  }
+  return `${entry.pendingCount} policy ${
+    entry.pendingCount === 1 ? 'rule' : 'rules'
+  } waiting for a decision${
+    entry.hasSecurityFlags ? ', flagged by the prover' : ''
+  }.`;
+};
+
+// ERROR means one of two things — the gateway could not provision the
+// sandbox, or its main process exited non-zero (hard fact 1). A condition
+// message says which when the gateway sent one; otherwise the log is where
+// to look.
+const errorCondition = (sandbox: Sandbox) =>
+  sandbox.status.conditions?.find((c) => c.status === 'False' || c.reason);
+
+const errorDetail = (sandbox: Sandbox): string =>
+  errorCondition(sandbox)?.message ||
+  'Provisioning failed, or the main process exited non-zero; the log says which.';
+
+// Prefer when the error condition last changed; fall back to when the
+// sandbox was created.
+const errorAtMs = (sandbox: Sandbox): number | undefined => {
+  const transitioned = errorCondition(sandbox)?.lastTransitionTime;
+  if (transitioned) {
+    const ms = Date.parse(transitioned);
+    if (!Number.isNaN(ms)) {
+      return ms;
+    }
+  }
+  return sandbox.metadata.createdAtMs || undefined;
 };
 
 // How many of one kind are named before the rest become a line of their own.
@@ -203,67 +245,18 @@ const byProposalUrgency = (a: DraftSandboxSummary, b: DraftSandboxSummary) => {
 const sandboxPath = (workspace: string, name: string, tab: string) =>
   `/workspaces/${encodeURIComponent(workspace)}/sandboxes/${encodeURIComponent(name)}?tab=${tab}`;
 
-type CardRow = {
-  label: string;
-  value: string | number;
-  // Where the value leads, where it leads anywhere. A count is a link to the
-  // page it was read from; a fact about the gateway is not.
-  to?: string;
-  testId: string;
-};
-
-// One row of a card's list, after PatternFly's own dashboard cards: what it
-// is on the left, what it says on the right, ruled off from the row below and
-// from the card's heading above. A link whose text is a bare figure says
-// nothing on its own, so it carries the name of what it counts as its label.
-const CardListRow: React.FC<CardRow> = ({ label, value, to, testId }) => (
-  <DataListItem aria-labelledby={`${testId}-label`}>
-    <DataListItemRow>
-      <DataListItemCells
-        dataListCells={[
-          <DataListCell key="label" id={`${testId}-label`}>
-            {label}
-          </DataListCell>,
-          <DataListCell
-            key="value"
-            isFilled={false}
-            alignRight
-            data-testid={testId}
-          >
-            {to ? (
-              <Link to={to} aria-label={`${label}: ${value}`}>
-                {value}
-              </Link>
-            ) : (
-              value
-            )}
-          </DataListCell>,
-        ]}
-      />
-    </DataListItemRow>
-  </DataListItem>
-);
-
 // Gateway overview — the dashboard's landing page for a platform admin. It
-// answers, in this order: is the gateway well, is anything waiting for me,
-// and how much is on it. The gateway's own four facts (status, version,
-// compute drivers and the extensions it negotiated — GetGatewayInfoResponse
-// is all there is) stay, the two tables a fold below. The API exposes no time
-// series, no utilisation and no event feed, so there is nothing to chart.
+// answers, in this order: is the gateway well, and is anything waiting for
+// me. Versions and compatibility sit as one small line under the title; the
+// gateway's compute drivers and extensions stay in the two tables a fold
+// below. The API exposes no time series, no utilisation and no event feed,
+// so there is nothing to chart.
 const GatewayOverviewPage: React.FC = () => {
   const gateway = useGatewayInfo();
   const compatibility = useGatewayCompatibility();
   const features = useFeatureFlags();
-  const workspaces = useWorkspaces();
   const sandboxes = useAllSandboxes();
   const providers = useAllProviders();
-  // What the Identity providers page lists: the platform's own profiles, the
-  // ones that belong to no workspace and that every workspace can create a
-  // provider from. The gateway answers this scope for platform admins only,
-  // which is who this page is for.
-  const profiles = useProviderProfiles(PLATFORM_PROFILE_SCOPE);
-  const templates = useAllTemplates();
-  const services = useAllServices({ enabled: features.services });
   // The same query the shell's Proposals badge reads, so this costs the
   // gateway nothing beyond what the badge already asks for.
   const proposals = useAllWorkspacesDraftSummary(features.draftPolicy);
@@ -306,86 +299,17 @@ const GatewayOverviewPage: React.FC = () => {
   // Absent from a BFF that predates the field.
   const extensions = info?.extensions ?? [];
 
-  const workspaceCount = countOf(workspaces);
   const sandboxCount = countOf(sandboxes);
   const providerCount = countOf(providers);
-  const profileCount = countOf(profiles);
-  const templateCount = countOf(templates);
-  const serviceCount = features.services ? countOf(services) : undefined;
-
-  const details: CardRow[] = [
-    {
-      label: 'Gateway version',
-      value: info?.gatewayVersion || '-',
-      testId: 'gateway-version',
-    },
-    {
-      label: 'Dashboard version',
-      value: APP_VERSION,
-      testId: 'dashboard-version',
-    },
-    {
-      label: 'Compatibility',
-      value: compatibilityText(
-        compatibility.data?.compatibility ?? info?.compatibility,
-      ),
-      testId: 'gateway-compatibility',
-    },
-  ];
-
-  const inventory: CardRow[] = [];
-  if (workspaceCount !== undefined) {
-    inventory.push({
-      label: 'Workspaces',
-      value: workspaceCount,
-      to: '/workspaces',
-      testId: 'gateway-count-workspaces',
-    });
-  }
-  if (sandboxCount !== undefined) {
-    inventory.push({
-      label: 'Sandboxes',
-      value: sandboxCount,
-      to: '/all-workspaces',
-      testId: 'gateway-count-sandboxes',
-    });
-  }
-  if (templateCount !== undefined) {
-    inventory.push({
-      label: 'Templates',
-      value: templateCount,
-      to: '/all-workspaces',
-      testId: 'gateway-count-templates',
-    });
-  }
-  if (serviceCount !== undefined) {
-    inventory.push({
-      label: 'Services',
-      value: serviceCount,
-      to: '/all-workspaces',
-      testId: 'gateway-count-services',
-    });
-  }
-  // Last, after the four the All resources page has a tab for: this one is a
-  // page of its own. The name is the one the rest of the dashboard gives a
-  // provider profile, and the row leads to the page that carries it.
-  if (profileCount !== undefined) {
-    inventory.push({
-      label: 'Identity providers',
-      value: profileCount,
-      to: '/provider-profiles',
-      testId: 'gateway-count-provider-profiles',
-    });
-  }
+  const gatewayVersion = info?.gatewayVersion || '-';
+  const compatibilityLabel = compatibilityText(
+    compatibility.data?.compatibility ?? info?.compatibility,
+  );
 
   // Nothing has been made on this gateway yet. A workspace is not the test:
   // a gateway starts with `default`, so one that has only workspaces has
   // still not been used for anything.
   const isEmpty = sandboxCount === 0 && providerCount === 0;
-  // An empty gateway is walked through getting started instead of counted,
-  // and a user the gateway refuses the cross-workspace lists to has nothing
-  // to count. Either way the top row is two columns, not three.
-  const showInventory = !isEmpty && inventory.length > 0;
 
   const erroredSandboxes = (sandboxes.data ?? []).filter(
     (sandbox) => sandbox.status.phase === 'ERROR',
@@ -396,14 +320,14 @@ const GatewayOverviewPage: React.FC = () => {
   // it is a problem.
   //
   // After PatternFly's own dashboard events card: a status badge and a short
-  // title that is the link. The sentence that used to follow the title,
-  // saying what it meant and what was to be done about it, is gone for now —
-  // which leaves the badge carrying what the row is about on its own.
+  // title that is the link, then a sentence beside it saying what the title
+  // means and what is to be done about it.
   const attention: AttentionItem[] = [];
   // First: a rule an agent proposed is a sandbox held up until somebody
-  // decides on it. One line per sandbox, named, because approving is done in
-  // that sandbox's own inbox and nowhere else (hard fact 25) — a line that
-  // only counted them led to a page that counts them again.
+  // decides on it. One line per sandbox, named as workspace/sandbox, because
+  // approving is done in that sandbox's own inbox and nowhere else (hard
+  // fact 25) — a line that only counted them led to a page that counts them
+  // again.
   const pendingSandboxes = [...proposals.items]
     .filter((entry) => entry.unavailable || entry.pendingCount > 0)
     .sort(byProposalUrgency);
@@ -412,13 +336,19 @@ const GatewayOverviewPage: React.FC = () => {
       pendingSandboxes.map((entry) => ({
         key: `proposals-${entry.workspace}/${entry.sandboxName}`,
         type: 'proposals' as const,
-        text: entry.sandboxName,
+        text: `${entry.workspace}/${entry.sandboxName}`,
+        detail: proposalDetail(entry),
         to: sandboxPath(entry.workspace, entry.sandboxName, 'proposals'),
+        atMs:
+          entry.unavailable || !entry.latestDraftMs
+            ? undefined
+            : entry.latestDraftMs,
       })),
       (hidden) => ({
         key: 'proposals-more',
         type: 'proposals' as const,
         text: `${hidden} more ${hidden === 1 ? 'sandbox' : 'sandboxes'} with proposals`,
+        detail: 'Every sandbox with a rule waiting is on the Proposals page.',
         to: '/proposals',
       }),
     ),
@@ -432,6 +362,9 @@ const GatewayOverviewPage: React.FC = () => {
       text: `${proposals.totalPending} policy ${
         proposals.totalPending === 1 ? 'rule' : 'rules'
       } waiting for a decision`,
+      detail: `An agent proposed ${
+        proposals.totalPending === 1 ? 'it' : 'them'
+      }. Each takes effect only once somebody approves it.`,
       to: '/proposals',
     });
   }
@@ -440,21 +373,23 @@ const GatewayOverviewPage: React.FC = () => {
       erroredSandboxes.map((sandbox) => ({
         key: `errored-${sandbox.metadata.workspace}/${sandbox.metadata.name}`,
         type: 'errors' as const,
-        text: sandbox.metadata.name,
-        // ERROR means one of two things — the gateway could not provision
-        // the sandbox, or its main process exited non-zero (hard fact 1) —
-        // and only the log says which, so the row leads there.
+        text: `${sandbox.metadata.workspace ?? ''}/${sandbox.metadata.name}`,
+        detail: errorDetail(sandbox),
+        // The row leads to the log, which is where ERROR is explained when
+        // the condition did not carry a message.
         to: sandboxPath(
           sandbox.metadata.workspace ?? '',
           sandbox.metadata.name,
           'logs',
         ),
+        atMs: errorAtMs(sandbox),
       })),
       (hidden) => ({
         key: 'errored-more',
         type: 'errors' as const,
         text: `${hidden} more ${hidden === 1 ? 'sandbox' : 'sandboxes'} in error`,
-        to: '/all-workspaces',
+        detail: 'Every sandbox on the gateway is under Sandboxes.',
+        to: '/sandboxes',
       }),
     ),
   );
@@ -463,6 +398,8 @@ const GatewayOverviewPage: React.FC = () => {
       key: 'no-providers',
       type: 'setup',
       text: 'No providers',
+      detail:
+        'Sandboxes have no credentials to reach a model or a service until one is added.',
       to: '/all-workspaces',
     });
   }
@@ -483,77 +420,59 @@ const GatewayOverviewPage: React.FC = () => {
   return (
     <>
       <PageSection>
-        <Title headingLevel="h1" className="pf-v6-u-mb-sm">
-          Gateway
-        </Title>
-        <Content component="p">
-          Admin view of status, resources, and alerts.
-        </Content>
+        {/* Heading and description left; versions right. The gateway's health
+            is in the masthead on every page, so these are only the facts
+            that are not. */}
+        <Flex
+          gap={{ default: 'gapMd' }}
+          flexWrap={{ default: 'wrap' }}
+          justifyContent={{ default: 'justifyContentSpaceBetween' }}
+          alignItems={{ default: 'alignItemsFlexStart' }}
+        >
+          <FlexItem>
+            <Title headingLevel="h1" className="pf-v6-u-mb-sm">
+              Gateway
+            </Title>
+            <Content component="p">Admin view of status and alerts.</Content>
+          </FlexItem>
+          <FlexItem>
+            <Flex
+              direction={{ default: 'column' }}
+              gap={{ default: 'gapXs' }}
+              alignItems={{ default: 'alignItemsFlexEnd' }}
+              data-testid="gateway-status-card"
+            >
+              <FlexItem>
+                <Content component="small" data-testid="gateway-version">
+                  Gateway version: {gatewayVersion}
+                </Content>
+              </FlexItem>
+              <FlexItem>
+                <Content component="small" data-testid="dashboard-version">
+                  Dashboard version: {APP_VERSION}
+                </Content>
+              </FlexItem>
+              <FlexItem>
+                <Content component="small" data-testid="gateway-compatibility">
+                  Compatibility: {compatibilityLabel}
+                </Content>
+              </FlexItem>
+            </Flex>
+          </FlexItem>
+        </Flex>
       </PageSection>
       <PageSection>
         {/* One grid for the whole page, so the blocks are separated by a
-            gutter rather than by a page section's padding each. The top row
-            answers, left to right, the questions that are asked on arrival:
-            is the gateway well, what is on it, and is anything waiting. */}
+            gutter rather than by a page section's padding each. Needs
+            attention leads: is anything waiting. */}
         <Grid hasGutter>
-          <GridItem lg={showInventory ? 5 : 8} md={12}>
-            {/* Not full height. A list card stretched to the tallest card of
-                the row ends in a band of empty card below its last rule,
-                which reads as a footer with nothing in it. */}
-            <Card data-testid="gateway-status-card">
-              <CardTitle component="h2">Details</CardTitle>
-              {/* The same list the inventory is, so the two cards of the row
-                  read as one thing said twice over rather than as two. The
-                  gateway's health is not among these: it is in the masthead,
-                  on every page, and saying it again a fold below itself is
-                  the same fact twice.
-
-                  In a body, as any card's content is. A list put straight
-                  into the card ran its rules the full width, which read well
-                  until you saw what it cost: full-bleed content paints over
-                  the card's own side borders, so the frame survived only
-                  beside the heading and under the last row. */}
-              <CardBody>
-                <DataList aria-label="Details" isCompact gridBreakpoint="none">
-                  {details.map((item) => (
-                    <CardListRow key={item.testId} {...item} />
-                  ))}
-                </DataList>
-              </CardBody>
-            </Card>
-          </GridItem>
-          {showInventory && (
-            <GridItem lg={3} md={6}>
-              <Card data-testid="gateway-counts">
-                <CardTitle component="h2">All resources</CardTitle>
-                {/* Rows rather than tiles, after PatternFly's own dashboard
-                    inventory card. A column rather than a band across the
-                    page: a figure right-aligned at the far edge of a
-                    full-width card is a long way from the name of what it
-                    counts. */}
-                <CardBody>
-                  <DataList
-                    aria-label="All resources"
-                    isCompact
-                    gridBreakpoint="none"
-                  >
-                    {inventory.map((item) => (
-                      <CardListRow key={item.testId} {...item} />
-                    ))}
-                  </DataList>
-                </CardBody>
-              </Card>
-            </GridItem>
-          )}
-          {/* The last column either carries what is waiting or says that
-              nothing is, so the row is whole either way. */}
-          <GridItem lg={4} md={6}>
+          {/* Either what is waiting, or that nothing is. */}
+          <GridItem span={12}>
             {attention.length > 0 ? (
-              // A card of its own rather than an inline alert, so the three
-              // columns of the row are three cards and the heading of each
-              // is in the same place. An alert's amber bar shouted the whole
-              // column at a page that is read before anything has gone
-              // wrong; the colour belongs on the one line it is about.
+              // A card of its own rather than an inline alert. An alert's
+              // amber bar shouted the whole column at a page that is read
+              // before anything has gone wrong; the colour belongs on the
+              // one line it is about.
               <Card data-testid="gateway-attention">
                 {/* The filter sits across from the heading, where the
                     PatternFly dashboard card puts it: plain text with a
@@ -561,15 +480,6 @@ const GatewayOverviewPage: React.FC = () => {
                     heading. It offers only the kinds that are waiting, so
                     choosing one can never empty the card. */}
                 <CardHeader
-                  // The two cards beside this one have a bare title, whose
-                  // box is 24 over and 16 under the one line in it. This
-                  // one has to come to the same height or its list starts
-                  // lower than theirs and the first rule of the three is in
-                  // three places. Hence the 16 under, which a header does
-                  // not have by default; and hence leaving PatternFly's own
-                  // offset on, which pulls the actions up and down by a
-                  // control's vertical padding so that a control in a
-                  // heading does not make the heading taller than its text.
                   className="pf-v6-u-pb-md"
                   actions={{
                     actions: (
@@ -632,12 +542,9 @@ const GatewayOverviewPage: React.FC = () => {
                     </Badge>
                   </CardTitle>
                 </CardHeader>
-                {/* The same list the two cards beside this one are built
-                    from, in a body as they are, so the three are ruled off
-                    the same way. A row is one line: what the thing is
-                    called, badged with which of the filter's kinds it is.
-                    The sentence that used to sit under it, saying what was
-                    wrong, is gone for now. */}
+                {/* A row is one line: badge, the name as the link, the
+                    sentence saying what is wrong with it, and how long ago
+                    on the right — after PatternFly's own events card. */}
                 <CardBody>
                   <DataList
                     aria-label="Needs attention"
@@ -655,9 +562,9 @@ const GatewayOverviewPage: React.FC = () => {
                               <DataListCell key="item">
                                 <Flex
                                   gap={{ default: 'gapSm' }}
-                                  flexWrap={{ default: 'nowrap' }}
+                                  flexWrap={{ default: 'wrap' }}
                                   alignItems={{
-                                    default: 'alignItemsCenter',
+                                    default: 'alignItemsBaseline',
                                   }}
                                 >
                                   <FlexItem>
@@ -676,11 +583,41 @@ const GatewayOverviewPage: React.FC = () => {
                                     </Label>
                                   </FlexItem>
                                   <FlexItem>
-                                    <Link to={item.to} id={`${item.key}-title`}>
+                                    <Link
+                                      to={item.to}
+                                      id={`${item.key}-title`}
+                                    >
                                       {item.text}
                                     </Link>
                                   </FlexItem>
+                                  <FlexItem flex={{ default: 'flex_1' }}>
+                                    <Content component="small">
+                                      {item.detail}
+                                    </Content>
+                                  </FlexItem>
                                 </Flex>
+                              </DataListCell>,
+                              <DataListCell
+                                key="when"
+                                isFilled={false}
+                                alignRight
+                              >
+                                {/* Same control the sandbox Proposals tab
+                                    uses for its Proposed column, so a row
+                                    here and a row there read as one clock. */}
+                                {item.atMs ? (
+                                  <Timestamp
+                                    date={new Date(item.atMs)}
+                                    data-testid={`${item.key}-age`}
+                                  />
+                                ) : (
+                                  <Content
+                                    component="small"
+                                    data-testid={`${item.key}-age`}
+                                  >
+                                    -
+                                  </Content>
+                                )}
                               </DataListCell>,
                             ]}
                           />
@@ -691,7 +628,7 @@ const GatewayOverviewPage: React.FC = () => {
                 </CardBody>
               </Card>
             ) : (
-              // The same card, built the same way, so that the column does
+              // The same card, built the same way, so that the row does
               // not change shape when the last thing waiting is dealt with.
               <Card data-testid="gateway-all-clear">
                 <CardTitle component="h2">Needs attention</CardTitle>

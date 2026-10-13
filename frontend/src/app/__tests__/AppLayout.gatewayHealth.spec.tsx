@@ -19,6 +19,13 @@ jest.mock('../../api/rbac', () => ({
 jest.mock('../../api/draftSummary', () => ({
   useAllWorkspacesDraftSummary: () => ({ totalPending: 0 }),
 }));
+// The shell counts sandboxes and workspaces for their nav badges. None here.
+jest.mock('../../api/allWorkspaces', () => ({
+  useAllSandboxes: () => ({ data: [] }),
+}));
+jest.mock('../../api/workspaces', () => ({
+  useWorkspaces: () => ({ data: [] }),
+}));
 jest.mock('../theme', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: jest.fn() }),
 }));

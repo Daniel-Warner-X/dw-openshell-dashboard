@@ -12,6 +12,7 @@ import {
   useParams,
 } from 'react-router-dom';
 
+import AllSandboxesPage from '../pages/AllSandboxesPage';
 import AllWorkspacesPage from '../pages/AllWorkspacesPage';
 import GatewayOverviewPage from '../pages/GatewayOverviewPage';
 import WorkspaceListPage from '../pages/WorkspaceListPage';
@@ -155,6 +156,14 @@ const AuthenticatedRoutes: React.FC = () => (
         element={
           <AdminRoute>
             <SettingsPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/sandboxes"
+        element={
+          <AdminRoute>
+            <AllSandboxesPage />
           </AdminRoute>
         }
       />

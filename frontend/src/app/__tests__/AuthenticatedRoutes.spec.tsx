@@ -17,6 +17,7 @@ const mockPage = (testId: string) => ({
   __esModule: true,
   default: () => <div data-testid={testId} />,
 });
+jest.mock('../../pages/AllSandboxesPage', () => mockPage('sandboxes'));
 jest.mock('../../pages/AllWorkspacesPage', () => mockPage('all-workspaces'));
 jest.mock('../../pages/GatewayOverviewPage', () => mockPage('gateway'));
 jest.mock('../../pages/WorkspaceListPage', () => mockPage('workspace-list'));
@@ -60,6 +61,20 @@ describe('AuthenticatedRoutes', () => {
     expect(screen.getByTestId('workspace-list')).toBeInTheDocument();
   });
 
+  it('shows the sandboxes page to a platform admin', () => {
+    mockRole = { isPlatformAdmin: true, isLoading: false };
+    renderAt('/sandboxes');
+
+    expect(screen.getByTestId('sandboxes')).toBeInTheDocument();
+  });
+
+  it('sends anyone else away from sandboxes', () => {
+    renderAt('/sandboxes');
+
+    expect(screen.queryByTestId('sandboxes')).not.toBeInTheDocument();
+    expect(screen.getByTestId('workspace-list')).toBeInTheDocument();
+  });
+
   it('decides nothing while the role is still loading', () => {
     mockRole = { isPlatformAdmin: false, isLoading: true };
     renderAt('/all-workspaces');
@@ -95,8 +110,22 @@ describe('AuthenticatedRoutes', () => {
     expect(screen.getByTestId('workspace-list')).toBeInTheDocument();
     unmount();
 
-    renderAt('/workspaces/all-workspaces');
+    const { unmount: unmountAllWorkspaces } = renderAt(
+      '/workspaces/all-workspaces',
+    );
     expect(screen.getByTestId('workspace')).toBeInTheDocument();
     expect(screen.queryByTestId('all-workspaces')).not.toBeInTheDocument();
+    unmountAllWorkspaces();
+
+    // Beside /workspaces, not under it: a workspace named "sandboxes" is
+    // still that workspace, and a sandbox detail path is still a sandbox.
+    const { unmount: unmountWorkspace } = renderAt('/workspaces/sandboxes');
+    expect(screen.getByTestId('workspace')).toBeInTheDocument();
+    expect(screen.queryByTestId('sandboxes')).not.toBeInTheDocument();
+    unmountWorkspace();
+
+    renderAt('/workspaces/team-a/sandboxes/agent');
+    expect(screen.getByTestId('sandbox')).toBeInTheDocument();
+    expect(screen.queryByTestId('sandboxes')).not.toBeInTheDocument();
   });
 });

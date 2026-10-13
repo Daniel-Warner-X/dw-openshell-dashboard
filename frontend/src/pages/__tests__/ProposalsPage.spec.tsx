@@ -131,7 +131,7 @@ describe('ProposalsPage', () => {
       ['team-a', 'team-b'],
       true,
     );
-    expect(rows()).toEqual([['team-b', 'agent', '2', '-', '-']]);
+    expect(rows()).toEqual([['2', 'team-b', 'agent', '-', '-']]);
   });
 
   // Unreadable first, then flagged, then the most recently proposed.
@@ -160,7 +160,8 @@ describe('ProposalsPage', () => {
     );
     renderPage();
 
-    expect(rows().map((cells) => cells[1])).toEqual([
+    // Sandbox name is the third column (after Pending and Workspace).
+    expect(rows().map((cells) => cells[2])).toEqual([
       'unknown',
       'flagged',
       'quiet',
@@ -182,7 +183,7 @@ describe('ProposalsPage', () => {
     renderPage();
 
     expect(rows()).toEqual([
-      ['team-a', 'agent', 'Could not be read', '-', '-'],
+      ['Could not be read', 'team-a', 'agent', '-', '-'],
     ]);
   });
 

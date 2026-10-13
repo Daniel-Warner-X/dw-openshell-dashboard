@@ -30,6 +30,12 @@ jest.mock('../../api/rbac', () => ({
 jest.mock('../../api/draftSummary', () => ({
   useAllWorkspacesDraftSummary: () => ({ totalPending: mockPendingProposals }),
 }));
+jest.mock('../../api/allWorkspaces', () => ({
+  useAllSandboxes: jest.fn(() => ({ data: [] })),
+}));
+jest.mock('../../api/workspaces', () => ({
+  useWorkspaces: jest.fn(() => ({ data: [] })),
+}));
 jest.mock('../theme', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: jest.fn() }),
 }));
@@ -44,7 +50,12 @@ jest.mock('~/assets/openshell-logo-dark.svg', () => ({
   default: 'openshell-logo-dark.svg',
 }));
 
+import { useAllSandboxes } from '../../api/allWorkspaces';
+import { useWorkspaces } from '../../api/workspaces';
 import AppLayout from '../AppLayout';
+
+const mockUseAllSandboxes = useAllSandboxes as jest.Mock;
+const mockUseWorkspaces = useWorkspaces as jest.Mock;
 
 const renderShell = (route: string) =>
   render(
@@ -91,35 +102,48 @@ describe('AppLayout navigation', () => {
     mockIsPlatformAdmin = false;
     mockUser = { subject: 'user-1', roles: [] };
     mockPendingProposals = 0;
+    mockUseAllSandboxes.mockReset();
+    mockUseAllSandboxes.mockReturnValue({ data: [] });
+    mockUseWorkspaces.mockReset();
+    mockUseWorkspaces.mockReturnValue({ data: [] });
   });
 
   // The lists across workspaces are answered for platform admins only, so
-  // nobody else is shown the way to them.
-  it('offers All resources to a platform admin, after Workspaces', () => {
+  // nobody else is shown the way to them. Sandboxes sits with All resources:
+  // it is the list that used to be that page's first tab.
+  it('offers Sandboxes and All resources to a platform admin', () => {
     mockIsPlatformAdmin = true;
     renderShell('/workspaces');
 
     expect(navLinks()).toEqual([
       ['Gateway', '/gateway'],
       ['Workspaces', '/workspaces'],
+      ['Sandboxes', '/sandboxes'],
       ['Proposals', '/proposals'],
-      ['All resources', '/all-workspaces'],
-      ['Identity providers', '/provider-profiles'],
+      ['Resources', '/all-workspaces'],
+      ['Providers', '/provider-profiles'],
       ['Global policy', '/global-policy'],
       ['Settings', '/settings'],
     ]);
+    expect(mockUseAllSandboxes).toHaveBeenCalledWith(undefined, {
+      enabled: true,
+    });
   });
 
   // Proposals are a sandbox's, not the platform's: a standard user reviews
   // the ones in the workspaces they are a member of, so the entry is theirs
-  // too. Only All resources is withheld.
-  it('does not offer it to anyone else', () => {
+  // too. Sandboxes and All resources are the cross-workspace lists, which
+  // the gateway answers for a platform admin only.
+  it('does not offer them to anyone else', () => {
     renderShell('/workspaces');
 
     expect(navLinks()).toEqual([
       ['Workspaces', '/workspaces'],
       ['Proposals', '/proposals'],
     ]);
+    expect(mockUseAllSandboxes).toHaveBeenCalledWith(undefined, {
+      enabled: false,
+    });
   });
 
   // The badge is the whole point of the entry: how many rules are waiting for
@@ -135,6 +159,37 @@ describe('AppLayout navigation', () => {
     renderShell('/workspaces');
 
     expect(screen.queryByTestId('proposals-badge')).not.toBeInTheDocument();
+  });
+
+  // The same badge the Proposals entry carries: how many there are, without
+  // opening the page. Zero is not badged.
+  it('counts the sandboxes on the entry', () => {
+    mockIsPlatformAdmin = true;
+    mockUseAllSandboxes.mockReturnValue({ data: [{}, {}, {}] });
+    renderShell('/workspaces');
+
+    expect(screen.getByTestId('sandboxes-badge')).toHaveTextContent('3');
+  });
+
+  it('badges nothing when the gateway has no sandboxes', () => {
+    mockIsPlatformAdmin = true;
+    renderShell('/workspaces');
+
+    expect(screen.queryByTestId('sandboxes-badge')).not.toBeInTheDocument();
+  });
+
+  // Same badge again: how many workspaces the signed-in user can see.
+  it('counts the workspaces on the entry', () => {
+    mockUseWorkspaces.mockReturnValue({ data: [{}, {}] });
+    renderShell('/workspaces');
+
+    expect(screen.getByTestId('workspaces-badge')).toHaveTextContent('2');
+  });
+
+  it('badges nothing when the user has no workspaces', () => {
+    renderShell('/workspaces');
+
+    expect(screen.queryByTestId('workspaces-badge')).not.toBeInTheDocument();
   });
 
   // Gateway leads, ungrouped: the landing page is not one of a set. A rule
@@ -160,10 +215,12 @@ describe('AppLayout navigation', () => {
     expect(primaryNav().queryAllByTestId('nav-section-rule')).toHaveLength(0);
   });
 
-  // The two entries share a word, not a path prefix: each is current only on
-  // its own pages.
+  // Workspaces and All resources share a word, not a path prefix. A workspace
+  // sandbox path shares a segment with Sandboxes the same way. Each entry is
+  // current only on its own pages.
   it.each([
-    ['/all-workspaces', 'All resources'],
+    ['/sandboxes', 'Sandboxes'],
+    ['/all-workspaces', 'Resources'],
     ['/workspaces', 'Workspaces'],
     ['/workspaces/team-a/sandboxes/agent', 'Workspaces'],
   ])('marks the right entry as current on %s', (route, entry) => {
@@ -178,6 +235,7 @@ describe('AppLayout navigation', () => {
 describe('AppLayout identity', () => {
   beforeEach(() => {
     mockIsPlatformAdmin = false;
+    mockUseAllSandboxes.mockReturnValue({ data: [] });
     mockUser = {
       subject: 'f3b1c2d4',
       displayName: 'Ada Lovelace',

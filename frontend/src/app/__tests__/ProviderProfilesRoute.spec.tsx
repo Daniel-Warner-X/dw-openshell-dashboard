@@ -22,6 +22,16 @@ jest.mock('../../api/gateway', () => ({
 jest.mock('../../api/draftSummary', () => ({
   useAllWorkspacesDraftSummary: () => ({ totalPending: 0 }),
 }));
+// The shell counts sandboxes and workspaces for their nav badges. The real
+// allWorkspaces module stays for the pages this file loads; only the counts
+// are stubbed.
+jest.mock('../../api/allWorkspaces', () => ({
+  ...jest.requireActual('../../api/allWorkspaces'),
+  useAllSandboxes: () => ({ data: [] }),
+}));
+jest.mock('../../api/workspaces', () => ({
+  useWorkspaces: () => ({ data: [] }),
+}));
 jest.mock('../theme', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: jest.fn() }),
 }));
@@ -80,7 +90,7 @@ describe('the provider profiles page', () => {
     renderAt('/provider-profiles');
 
     const link = within(nav()).getByRole('link', {
-      name: 'Identity providers',
+      name: 'Providers',
       hidden: true,
     });
     expect(link).toHaveAttribute('href', '/provider-profiles');
@@ -94,7 +104,7 @@ describe('the provider profiles page', () => {
 
     expect(
       within(nav()).queryByRole('link', {
-        name: 'Identity providers',
+        name: 'Providers',
         hidden: true,
       }),
     ).not.toBeInTheDocument();
